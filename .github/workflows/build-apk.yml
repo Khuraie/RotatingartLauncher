@@ -132,6 +132,7 @@ jobs:
         id: build_debug
         if: github.event.inputs.build_debug == 'true'
         run: |
+          set -o pipefail
           echo "::group::构建 Debug 版本"
           ./gradlew clean assembleDebug --no-daemon --stacktrace 2>&1 | tee debug-build.log
           echo "::endgroup::"
@@ -208,6 +209,7 @@ jobs:
         id: build_safe
         if: github.event.inputs.build_safe == 'true' && steps.gen_key.outcome == 'success'
         run: |
+          set -o pipefail
           echo "::group::构建 Safe Release 版本"
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee release-build.log
           echo "::endgroup::"
