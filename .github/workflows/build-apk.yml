@@ -40,10 +40,19 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          # 上游的部分 submodule 固定 SHA 已不可达（force-push 后丢失），
+          # 不再递归 checkout，改为只拉取构建实际用到的子模块的默认分支。
+          submodules: false
           lfs: true
           # 浅克隆节省时间和空间
           fetch-depth: 1
+
+      - name: Init required submodules
+        run: |
+          git submodule sync --recursive
+          for m in core/libs/SDL core/libs/FNA3D core/libs/FAudio core/libs/gl4es; do
+            git submodule update --init --depth 1 --remote "$m"
+          done
 
       # 多级缓存策略：Gradle Wrapper
       - name: Cache Gradle Wrapper
