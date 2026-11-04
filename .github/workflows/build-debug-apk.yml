@@ -22,8 +22,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           lfs: true
+
+      - name: Init required submodules
+        run: |
+          # 上游 submodule 固定 SHA 已失效（force-push），按分支浅克隆构建所需子模块。
+          rm -rf core/libs/SDL core/libs/FNA3D core/libs/FAudio core/libs/gl4es
+          git clone --depth 1 -b sdl3   https://github.com/RotatingArtDev/SDL.git    core/libs/SDL
+          git clone --depth 1 -b sdl3   https://github.com/RotatingArtDev/FNA3D.git  core/libs/FNA3D
+          git clone --depth 1 -b master https://github.com/RotatingArtDev/FAudio.git core/libs/FAudio
+          git clone --depth 1 -b master https://github.com/RotatingArtDev/gl4es.git  core/libs/gl4es
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -31,11 +40,18 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure Android SDK
+        run: |
+          # android-actions/setup-android@v3 依赖 SDK 仓库里已不存在的 'tools' 包，
+          # 改为直接使用 runner 预装的 SDK。
+          SDK=/usr/local/lib/android/sdk
+          echo "ANDROID_SDK_ROOT=$SDK" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$SDK" >> $GITHUB_ENV
+          for d in "$SDK"/cmdline-tools/*/bin; do echo "$d" >> $GITHUB_PATH; done
+          command -v sdkmanager || ls "$SDK"/cmdline-tools
 
-      - name: Install Android NDK r28 and CMake
-        run: sdkmanager --install 'ndk;28.0.12433566' 'cmake;3.22.1'
+      - name: Install Android NDK and CMake
+        run: sdkmanager --install 'ndk;29.0.14206865' 'cmake;3.22.1'
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
