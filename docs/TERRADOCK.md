@@ -58,17 +58,29 @@ Minimal edits to existing code (no refactors, editor/other packs untouched):
   `C:\Tmobile\terradock\control-pack-ref.json`; re-run when the mock geometry changes).
 - Installed to `ControlPacks/installed/terradock_pack/` on game start; selected automatically
   only when the user has never configured a control pack (`hasUserSelectedPack() == false`).
-  Re-installed when the asset `version` increases; a user's own pack is never overridden.
+  Re-installed whenever the asset `version` changes — the version is a content hash (CRC-32 of
+  reference/sticks/buttons/hotbar), so any geometry or key-mapping tweak regenerates and
+  re-installs automatically; a user's own pack is never overridden.
 - Coordinate mapping (identical to the mod, agreed with Lead):
   `u = surfaceHeightPx / 1080`; each element is anchored to one of 9 reference anchor points;
   `pos_px = anchorPointPx + (ref - anchorRef) * u`; sizes scale by `u`.
-  Anchor per element is stored explicitly in the asset (`"anchor": "BL"` …) and computed by the
-  generator with a nearest-anchor-per-axis rule. X-anchoring matters on aspect ratios ≠ 2.222:1
-  (right-anchored controls stick to the right edge); Y-anchoring is mathematically identical to
-  plain scaling because both positions and offsets use `u = sh/1080`.
+  Anchor per element is stored explicitly in the asset (`"anchor": "BL"` …). Generator rule
+  (Lead's): X = nearest of `{0, 1200, 2400}` to `cx` with ties picking the lower value;
+  Y = nearest of `{0, 540, 1080}`, except the top-right system column, which is anchored as one
+  group from its top element (`map/bag/gear/pause` = TR). X-anchoring matters on aspect ratios
+  ≠ 2.222:1 (right-anchored controls stick to the right edge); Y-anchoring is mathematically
+  identical to plain scaling because both positions and offsets use `u = sh/1080`.
+  The generator also emits `ox/oy` and **regression-checks all 18 element offsets against the
+  Lead's authoritative table** (fails with exit 1 on any mismatch).
+  Verified offsets (ref units): move(510,−50) aim(−210,−50), hand(186,212) jump(−186,212)
+  heal(534,212) mount(−508,212), mana(590,−194) use(−134,−200), zoomout(−476,−74) buff(540,−68),
+  grapple(−158,−70) target(−290,−38) smart(−508,−38) zoomin(476,−74), system each (−58, 56/132/208/284).
+- Hotbar rect is the same in both halves: `x=12, y=12, cols=6, rows=2, cell=150, gap=8` in
+  2400×1080 reference units, so the invisible launcher tap cells sit exactly under the mod's
+  drawn slots.
 - Hotbar: 10 invisible touch cells over the 6×2 hotbar area synthesize digit keys `1..9,0`
   (tap-to-select, per Lead convention — hotbar state is **not** in the bridge). Cells 10–11 are
-  inert (no control created, taps fall through).
+  inert (mod draws them as slots 10/11 without digit binding).
 - Pack contents: 2 sticks (move→WASD, aim→relative mouse), 12 quick buttons, 4 system buttons,
   10 hotbar cells = 28 controls. Bars/buffs/cursor are mod-drawn only.
 

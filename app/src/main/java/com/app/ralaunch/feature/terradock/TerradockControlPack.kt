@@ -20,7 +20,8 @@ import java.io.File
  *
  * 坐标映射（与 mod 侧完全一致，Lead 2026-11 约定）：
  *  - 每个元素九宫格锚定：TL/TC/TR、CL/C/C/R、BL/BC/BR（参考坐标下 anchorX ∈ {0,1200,2400}，
- *    anchorY ∈ {0,540,1080}）。
+ *    anchorY ∈ {0,540,1080}）。生成器规则：X 取最近锚点（等距取较小值），Y 同理，
+ *    但右上系统按钮列整体按列顶元素锚定（map/bag/gear/pause = TR）。
  *  - `u = surfaceHeightPx / 1080`
  *  - `pos_px = anchorPointPx + (cx - anchorX_ref, cy - anchorY_ref) * u`，尺寸同样 * u。
  *  - 存储形态仍是 RAL 的归一化值：`x = (centerX - sizePx/2) / surfaceW`，
@@ -63,7 +64,7 @@ object TerradockControlPack {
     )
 
     @Serializable
-    data class Reference(val w: Float = REF_W, val h: Float = REF_H)
+    data class Reference(val w: Float = 2400f, val h: Float = 1080f)
 
     @Serializable
     data class StickSpec(
