@@ -128,9 +128,16 @@ Enable/disable:
 - Verification path used: push to `fork main` → GitHub Actions `build-debug-apk.yml`
   (`./gradlew assembleDebug`, NDK 29 / CMake 3.22.1, preinstalled SDK).
 - Baseline before this work: CI run `41987830725` built `app-debug.apk` successfully.
-- This change: see the run URL in the task/PR comment (recorded in the commit message region).
-  Unit tests (`TerradockBridgeFormatTest`) are **not** executed by that workflow (it only runs
+- This work (**green**): run
+  [`42037567076`](https://github.com/Khuraie/RotatingartLauncher/actions/runs/42037567076)
+  on `904d4476` — all steps ✓ (`Build debug APK` 6m48s), and run
+  [`42038730476`](https://github.com/Khuraie/RotatingartLauncher/actions/runs/42038730476)
+  on `176a4da3` (anchor/version alignment) — **success** (`Build debug APK` ✓,
+  `Upload debug APK artifact` ✓).
+- Unit tests (`TerradockBridgeFormatTest`) are **not** executed by that workflow (it only runs
   `assembleDebug`); they are compile-checked only if someone runs `testDebugUnitTest`.
+- Note: `build-debug-apk.yml` only triggers on `app/**`, `shared/**`, `gradle/**`, `gradlew`,
+  `settings.gradle*`, `build.gradle*`; docs/tooling-only commits do not schedule a build.
 
 ## Verified vs unverified
 
