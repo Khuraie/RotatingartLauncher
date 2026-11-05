@@ -145,10 +145,13 @@ Enable/disable:
 - Baseline before this work: CI run `41987830725` built `app-debug.apk` successfully.
 - This work (**green**): run
   [`42037567076`](https://github.com/Khuraie/RotatingartLauncher/actions/runs/42037567076)
-  on `904d4476` — all steps ✓ (`Build debug APK` 6m48s), and run
+  on `904d4476` — all steps ✓ (`Build debug APK` 6m48s), run
   [`42038730476`](https://github.com/Khuraie/RotatingartLauncher/actions/runs/42038730476)
   on `176a4da3` (anchor/version alignment) — **success** (`Build debug APK` ✓,
-  `Upload debug APK artifact` ✓).
+  `Upload debug APK artifact` ✓), and run
+  [`42041691604`](https://github.com/Khuraie/RotatingartLauncher/actions/runs/42041691604)
+  on `f7bb903f` (finalised mobile-feel v3 geometry: new hotbar/sticks/buttons, AIM_MODE &
+  AUTO_SELECT bridge actions, left-edge system buttons) — **success**.
 - Unit tests (`TerradockBridgeFormatTest`) are **not** executed by that workflow (it only runs
   `assembleDebug`); they are compile-checked only if someone runs `testDebugUnitTest`.
 - Note: `build-debug-apk.yml` only triggers on `app/**`, `shared/**`, `gradle/**`, `gradlew`,
