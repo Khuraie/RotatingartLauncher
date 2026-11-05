@@ -55,6 +55,11 @@ jobs:
           git clone --depth 1 -b sdl3   https://github.com/RotatingArtDev/FNA3D.git  core/libs/FNA3D
           git clone --depth 1 -b master https://github.com/RotatingArtDev/FAudio.git core/libs/FAudio
           git clone --depth 1 -b master https://github.com/RotatingArtDev/gl4es.git  core/libs/gl4es
+          # FNA3D 依赖嵌套子模块 MojoShader
+          git -C core/libs/FNA3D submodule update --init --recursive --depth 1
+          for m in SDL FAudio gl4es; do
+            git -C "core/libs/$m" submodule update --init --recursive --depth 1 || true
+          done
 
       # 多级缓存策略：Gradle Wrapper
       - name: Cache Gradle Wrapper
