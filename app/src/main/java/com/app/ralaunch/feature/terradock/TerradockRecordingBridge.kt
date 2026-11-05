@@ -51,7 +51,9 @@ class TerradockRecordingBridge(
         fun isLauncherOnlyKey(keycode: ControlData.KeyCode): Boolean =
             keycode == ControlData.KeyCode.KEYBOARD_PAGEUP ||
                 keycode == ControlData.KeyCode.KEYBOARD_PAGEDOWN ||
-                keycode == ControlData.KeyCode.KEYBOARD_TAB
+                keycode == ControlData.KeyCode.KEYBOARD_TAB ||
+                keycode == ControlData.KeyCode.KEYBOARD_F1 ||
+                keycode == ControlData.KeyCode.KEYBOARD_F2
     }
 
     private val state = TerradockInputState
@@ -61,9 +63,11 @@ class TerradockRecordingBridge(
     /** 每帧复用的目标状态缓冲（避免每帧分配） */
     private val desiredMove = BooleanArray(4)
 
-    // 显式开火来源计数（USE 按钮 / 触摸板左键）
+    // 显式开火来源计数（USE 按钮 / 触摸板左键 / AIM_MODE 按住）
     private var explicitFireSources = 0
     private var autoFire = false
+    /** AIM_MODE 按钮（桥接 AUTO_FIRE，bit9）按住时由 launcher 保持左键 */
+    private var autoFireButtonHeld = false
     private var fireSent = false
 
     // ===================== 每帧合成 =====================
@@ -72,6 +76,8 @@ class TerradockRecordingBridge(
     fun tick(dt: Float) {
         applyMoveStick()
         applyAimStick(dt)
+        // flags.bit5：launcher 正在合成“保持开火”（瞄摇杆越界 或 AIM_MODE 按住）
+        state.autoFireActive = autoFire || autoFireButtonHeld
     }
 
     private fun applyMoveStick() {
@@ -118,7 +124,6 @@ class TerradockRecordingBridge(
             mag > AUTO_FIRE_THRESHOLD
         if (wantAutoFire != autoFire) {
             autoFire = wantAutoFire
-            state.autoFireActive = autoFire
             syncFire()
         }
     }
@@ -142,6 +147,16 @@ class TerradockRecordingBridge(
                 if (isDown) state.zoom = (state.zoom + 0.1f).coerceAtMost(2f)
             ControlData.KeyCode.KEYBOARD_PAGEDOWN ->
                 if (isDown) state.zoom = (state.zoom - 0.1f).coerceAtLeast(0.5f)
+            // AIM_MODE 按钮 → bridge bit9 AUTO_FIRE：按住期间 launcher 保持左键
+            ControlData.KeyCode.KEYBOARD_F1 -> {
+                autoFireButtonHeld = isDown
+                explicitFireSources = if (isDown) {
+                    (explicitFireSources + 1).coerceAtMost(4)
+                } else {
+                    (explicitFireSources - 1).coerceAtLeast(0)
+                }
+                syncFire()
+            }
             else -> Unit
         }
         if (keycode == ControlData.KeyCode.KEYBOARD_LSHIFT ||
@@ -227,6 +242,7 @@ class TerradockRecordingBridge(
         }
         explicitFireSources = 0
         autoFire = false
+        autoFireButtonHeld = false
         state.autoFireActive = false
         // 松开所有由控件按下、仍在 held 里的键 / 鼠标
         val held = state.held
@@ -258,6 +274,9 @@ class TerradockRecordingBridge(
         ControlData.KeyCode.KEYBOARD_PAGEUP -> TerradockBridgeFormat.ACTION_ZOOM_IN
         ControlData.KeyCode.KEYBOARD_PAGEDOWN -> TerradockBridgeFormat.ACTION_ZOOM_OUT
         ControlData.KeyCode.KEYBOARD_TAB -> TerradockBridgeFormat.ACTION_TARGET_LOCK
+        // 控制包里的 AIM_MODE 按钮 → AUTO_FIRE（mod 读 ACTION 9）；AUTO_SELECT → AUTO_SELECT
+        ControlData.KeyCode.KEYBOARD_F1 -> TerradockBridgeFormat.ACTION_AUTO_FIRE
+        ControlData.KeyCode.KEYBOARD_F2 -> TerradockBridgeFormat.ACTION_AUTO_SELECT
         ControlData.KeyCode.MOUSE_RIGHT -> TerradockBridgeFormat.ACTION_INTERACT
         else -> 0
     }

@@ -65,24 +65,37 @@ Minimal edits to existing code (no refactors, editor/other packs untouched):
   `u = surfaceHeightPx / 1080`; each element is anchored to one of 9 reference anchor points;
   `pos_px = anchorPointPx + (ref - anchorRef) * u`; sizes scale by `u`.
   Anchor per element is stored explicitly in the asset (`"anchor": "BL"` …). Generator rule
-  (Lead's): X = nearest of `{0, 1200, 2400}` to `cx` with ties picking the lower value;
-  Y = nearest of `{0, 540, 1080}`, except the top-right system column, which is anchored as one
-  group from its top element (`map/bag/gear/pause` = TR). X-anchoring matters on aspect ratios
-  ≠ 2.222:1 (right-anchored controls stick to the right edge); Y-anchoring is mathematically
-  identical to plain scaling because both positions and offsets use `u = sh/1080`.
-  The generator also emits `ox/oy` and **regression-checks all 18 element offsets against the
-  Lead's authoritative table** (fails with exit 1 on any mismatch).
-  Verified offsets (ref units): move(510,−50) aim(−210,−50), hand(186,212) jump(−186,212)
-  heal(534,212) mount(−508,212), mana(590,−194) use(−134,−200), zoomout(−476,−74) buff(540,−68),
-  grapple(−158,−70) target(−290,−38) smart(−508,−38) zoomin(476,−74), system each (−58, 56/132/208/284).
-- Hotbar rect is the same in both halves: `x=12, y=12, cols=6, rows=2, cell=150, gap=8` in
-  2400×1080 reference units, so the invisible launcher tap cells sit exactly under the mod's
-  drawn slots.
-- Hotbar: 10 invisible touch cells over the 6×2 hotbar area synthesize digit keys `1..9,0`
-  (tap-to-select, per Lead convention — hotbar state is **not** in the bridge). Cells 10–11 are
-  inert (mod draws them as slots 10/11 without digit binding).
-- Pack contents: 2 sticks (move→WASD, aim→relative mouse), 12 quick buttons, 4 system buttons,
-  10 hotbar cells = 28 controls. Bars/buffs/cursor are mod-drawn only.
+  (Lead's, unchanged): X = nearest of `{0, 1200, 2400}` to `cx`, Y = nearest of
+  `{0, 540, 1080}`, ties picking the lower value. X-anchoring matters on aspect ratios
+  ≠ 2.222:1 (right-anchored controls stick to the right edge); Y-anchoring is cosmetic —
+  positions and offsets both scale by `u = sh/1080`, so the runtime Y is identical for any
+  anchor choice.
+  The generator also emits `ox/oy` and **regression-checks all 20 element geometries
+  (cx, cy, size/radius) against the Lead's authoritative table** (exit 1 on any mismatch).
+- Current geometry (2400×1080 reference units, from the finalised
+  `control-pack-ref.json` / mobile-feel v3 mock):
+  - sticks: `move (272,860) r120`, `aim (2128,860) r120`, deadzone 0.12 → anchors BL / BR.
+  - quick buttons (cx,cy,size): `interact 109,749,137` · `heal 435,749,137` ·
+    `autoselect 88,869,103` · `mana 456,869,103` · `autofire 120,965,103` ·
+    `buff 424,965,103` · `jump 2291,749,137` · `grapple 1965,749,75` · `use 1944,869,103` ·
+    `mount 2312,869,103` · `smart 2280,965,103` · `target 1976,965,103` ·
+    `zoomout 735,1010,96` · `zoomin 1665,1010,96` (anchors CL/CR/BL/BR/BC per the rule).
+  - system buttons on the **left edge**, cx=56, size 72: `map cy232` · `bag cy318` ·
+    `gear cy404` · `pause cy490` → anchors TL, CL, CL, CL (X all = 56 → left).
+  - offsets (ref units from anchor): move (272,−220) · aim (−272,−220) ·
+    interact (109,209) · heal (435,209) · autoselect (88,−211) · mana (456,−211) ·
+    autofire (120,−115) · buff (424,−115) · jump (−109,209) · grapple (−435,209) ·
+    use (−456,−211) · mount (−88,−211) · smart (−120,−115) · target (−424,−115) ·
+    zoomout (−465,−70) · zoomin (465,−70) · map (56,232) · bag (56,−222) ·
+    gear (56,−136) · pause (56,−50).
+- Hotbar rect is the same in both halves: `x=22, y=18, cols=6, rows=2, cell=78, gap=7` in
+  2400×1080 reference units (block anchor TL), so the invisible launcher tap cells sit exactly
+  under the mod's drawn slots.
+- Hotbar: 12 cells; cells 0–9 are the hotbar and synthesize digit keys `1..9,0`
+  (tap-to-select, per Lead convention — hotbar state is **not** in the bridge); cells 10–11 are
+  the mod's native quick potion slots and are inert (no launcher control created).
+- Pack contents: 2 sticks (move→WASD, aim→relative mouse), 14 quick buttons, 4 left-edge system
+  buttons, 10 hotbar cells = 30 controls. Bars/buffs/cursor are mod-drawn only.
 
 ## Action → desktop input (bridge-spec table)
 
@@ -98,8 +111,10 @@ Minimal edits to existing code (no refactors, editor/other packs untouched):
 | MAP | M | |
 | ZOOM_IN / ZOOM_OUT | **launcher-only** (bridge bits 12/13) | no desktop binding; mod applies camera zoom |
 | TARGET_LOCK | **launcher-only** (bridge bit 11) | |
+| AUTO_FIRE (`AIM_MODE` button) | **launcher-only** (bridge bit 9) | hold = launcher holds LMB + `flags.bit5`; mod reads AIM_MODE as ACTION 9 |
+| AUTO_SELECT (`AUTO_SELECT` button) | **launcher-only** (bridge bit 10) | hotbar auto-select handled mod-side |
 | UP / DOWN | bridge bits 18/19 | derived from move stick (W/S) |
-| AUTO_FIRE | bridge bit 9 + `flags.bit5` | aim stick beyond 0.65 in Aim & Use mode |
+| AUTO_FIRE from aim stick | bridge bit 9 + `flags.bit5` | aim stick beyond 0.65 in Aim & Use mode |
 
 Sticks are analog on the bridge (`stickLX/LY/RX/RY`, radius-normalized), dead zones are
 launcher-side: move 0.12, aim 0.12, auto-fire threshold 0.65. Aim sensitivity reuses the
@@ -163,15 +178,16 @@ Verified (by construction / unit-testable):
 
 ## Open risks
 
-1. **Anchor assignment (X axis)** — the reference JSON has no anchor field; this repo computes it
-   with "nearest of 0/1200/2400 per axis". If the Lead's mod generator uses a different rule,
-   right/centre-side controls will be offset by up to ~30–70 px on the phone's aspect ratio.
-   Fixable in `tools/terradock/gen_control_pack.py` (one rule) + regenerate + reinstall.
+1. **Anchor assignment** — resolved with the Lead: generator rule is now X nearest of
+   `{0,1200,2400}` / Y nearest of `{0,540,1080}` (ties lower, no group overrides) and the 20
+   authoritative `(cx, cy, size)` tuples are encoded as a regression check, so a ref-JSON drift
+   or rule change fails the generator loudly instead of silently misaligning touch zones.
 2. Escape is shared by INVENTORY and MENU (one desktop key), so the bridge reports only the
    INVENTORY bit for Escape presses.
-3. ZOOM/TARGET_LOCK keys (PageUp/PageDown/Tab) are swallowed while the bridge runs so they are
-   not forwarded to the desktop game. A user pack that binds those keys for real desktop use
-   would lose them during a TERRADOCK session.
+3. Launcher-only synthetic keys are swallowed while the bridge runs: `PageUp`/`PageDown`
+   (zoom), `Tab` (target lock), `F1` (`AIM_MODE` → bridge bit 9) and `F2` (`AUTO_SELECT` →
+   bridge bit 10). A user pack that binds those keys for real desktop use would lose them during
+   a TERRADOCK session.
 4. Relative-mouse aim assumes FNA/SDL consumes relative motion for `Mouse.GetState`; if Terraria
    reads absolute position only, aim may need the absolute-position path (already implemented in
    RAL, one-line switch).

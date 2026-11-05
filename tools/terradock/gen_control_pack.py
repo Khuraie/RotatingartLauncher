@@ -62,20 +62,41 @@ ACTION_KEYS = {
     "ZOOM_IN":      ("KEYBOARD_PAGEUP",   True),
     "ZOOM_OUT":     ("KEYBOARD_PAGEDOWN", True),
     "TARGET_LOCK":  ("KEYBOARD_TAB",      True),
+    # launcher-only synthetic keys (swallowed, never forwarded to the desktop game):
+    #   F1 -> bridge bit 9  AUTO_FIRE   (hold = launcher holds LMB; mod reads AIM_MODE as ACTION 9)
+    #   F2 -> bridge bit 10 AUTO_SELECT (auto-select hotbar item; mod-side behaviour)
+    "AIM_MODE":     ("KEYBOARD_F1",       True),
+    "AUTO_SELECT":  ("KEYBOARD_F2",       True),
 }
 
 # 12 hotbar cells; tap -> digit quick-select keys 1..9,0 (Lead's convention, not bridge fields)
 HOTBAR_KEYS = ["KEYBOARD_1", "KEYBOARD_2", "KEYBOARD_3", "KEYBOARD_4", "KEYBOARD_5",
                "KEYBOARD_6", "KEYBOARD_7", "KEYBOARD_8", "KEYBOARD_9", "KEYBOARD_0", "", ""]
 
-# Lead's authoritative offsets (ref units from the element's anchor point), used as a
-# regression check so launcher touch zones and mod-drawn controls stay locked together.
-EXPECTED_OFFSETS = {
-    "move": (510, -50), "aim": (-210, -50),
-    "hand": (186, 212), "jump": (-186, 212), "heal": (534, 212), "mount": (-508, 212),
-    "mana": (590, -194), "use": (-134, -200), "zoomout": (-476, -74), "buff": (540, -68),
-    "grapple": (-158, -70), "target": (-290, -38), "smart": (-508, -38), "zoomin": (476, -74),
-    "map": (-58, 56), "bag": (-58, 132), "gear": (-58, 208), "pause": (-58, 284),
+# Lead's authoritative geometry (2400x1080 ref units) — regression check so launcher touch
+# zones and mod-drawn controls stay locked together. id -> (cx, cy, size) where size is the
+# button diameter or the stick radius.
+EXPECTED_GEOMETRY = {
+    "move":      (272, 860, 120),
+    "aim":       (2128, 860, 120),
+    "interact":  (109, 749, 137),
+    "heal":      (435, 749, 137),
+    "autoselect": (88, 869, 103),
+    "mana":      (456, 869, 103),
+    "autofire":  (120, 965, 103),
+    "buff":      (424, 965, 103),
+    "jump":      (2291, 749, 137),
+    "grapple":   (1965, 749, 75),
+    "use":       (1944, 869, 103),
+    "mount":     (2312, 869, 103),
+    "smart":     (2280, 965, 103),
+    "target":    (1976, 965, 103),
+    "zoomout":   (735, 1010, 96),
+    "zoomin":    (1665, 1010, 96),
+    "map":       (56, 232, 72),
+    "bag":       (56, 318, 72),
+    "gear":      (56, 404, 72),
+    "pause":     (56, 490, 72),
 }
 
 
@@ -102,20 +123,20 @@ def offsets_for(anchor, cx, cy):
     return cx - ax, cy - ay
 
 
-def check_offsets(pack, expected):
-    """Diff computed offsets against the Lead's authoritative list; returns mismatch lines."""
+def check_geometry(pack, expected):
+    """Diff generated (cx, cy, size) against the Lead's authoritative geometry."""
     problems = []
     actual = {}
     for s in pack["sticks"]:
-        actual[s["id"]] = offsets_for(s["anchor"], s["cx"], s["cy"])
+        actual[s["id"]] = (s["cx"], s["cy"], s["radius"])
     for b in pack["buttons"]:
-        actual[b["id"]] = offsets_for(b["anchor"], b["cx"], b["cy"])
+        actual[b["id"]] = (b["cx"], b["cy"], b["size"])
     for key, exp in expected.items():
         act = actual.get(key)
         if act is None:
             problems.append("%s: missing in generated pack" % key)
-        elif (abs(act[0] - exp[0]) > 0.01) or (abs(act[1] - exp[1]) > 0.01):
-            problems.append("%s: offset %s != expected %s" % (key, act, exp))
+        elif any(abs(a - e) > 0.01 for a, e in zip(act, exp)):
+            problems.append("%s: (cx,cy,size)=%s != expected %s" % (key, act, exp))
     return problems
 
 
@@ -128,7 +149,10 @@ def build(ref):
         "source": "terradock/control-pack-ref.json",
         "note": ("Reference canvas 2400x1080. Runtime mapping: u = surfaceHeightPx/1080; "
                  "pos_px = anchorPointPx + (cx-anchorRef)*u; sizes scale by u. "
-                 "Anchor rule: nearest of the 9 anchor points per axis."),
+                 "Anchor rule: X nearest of {0,1200,2400}, Y nearest of {0,540,1080} "
+                 "(ties pick the lower value). Y anchoring is cosmetic: positions and "
+                 "offsets both scale by u, so only X anchoring changes anything on "
+                 "non-2.222:1 aspect ratios."),
         "reference": {"w": REF_W, "h": REF_H},
         "sticks": [],
         "buttons": [],
@@ -154,7 +178,7 @@ def build(ref):
             "deadzone": s.get("deadzone", 0.12),
         })
 
-    def add_buttons(items, force_anchor=None):
+    def add_buttons(items):
         for b in items:
             action = b.get("action", "")
             if action not in ACTION_KEYS:
@@ -162,7 +186,7 @@ def build(ref):
                 continue
             keycode, bridge_only = ACTION_KEYS[action]
             cx, cy = b.get("cx", 0), b.get("cy", 0)
-            anchor = force_anchor or anchor_for(cx, cy)
+            anchor = anchor_for(cx, cy)
             ox, oy = offsets_for(anchor, cx, cy)
             out["buttons"].append({
                 "id": b.get("id", ""),
@@ -179,11 +203,7 @@ def build(ref):
             })
 
     add_buttons(ref.get("buttons", []))
-    # 右上系统按钮列作为一列整体锚定（Y 取列顶元素）——与 mod 生成器一致
-    system = ref.get("system", [])
-    if system:
-        top = min(system, key=lambda b: b.get("cy", 0))
-        add_buttons(system, force_anchor=anchor_for(top.get("cx", 0), top.get("cy", 0)))
+    add_buttons(ref.get("system", []))
 
     hb = ref.get("hotbar")
     if hb:
@@ -237,24 +257,25 @@ def main():
         pack["version"], len(pack["sticks"]), len(pack["buttons"]),
         len(pack["hotbar"]["keys"]) if pack["hotbar"] else 0))
     for s in pack["sticks"]:
-        print("  stick %-4s anchor=%-2s cx=%s cy=%s off=(%s,%s) r=%s" % (
+        print("  stick %-5s anchor=%-2s cx=%-4s cy=%-4s off=(%5s,%5s) r=%s" % (
             s["id"], s["anchor"], s["cx"], s["cy"], s["ox"], s["oy"], s["radius"]))
     for b in pack["buttons"]:
-        print("  button %-8s %-12s anchor=%-2s off=(%4s,%4s) key=%-16s bridgeOnly=%s" % (
-            b["id"], b["action"], b["anchor"], b["ox"], b["oy"], b["keycode"], b["bridgeOnly"]))
+        print("  button %-10s %-12s anchor=%-2s cx=%-4s cy=%-4s off=(%5s,%5s) size=%-3s key=%-16s bridgeOnly=%s" % (
+            b["id"], b["action"], b["anchor"], b["cx"], b["cy"], b["ox"], b["oy"],
+            b["size"], b["keycode"], b["bridgeOnly"]))
     if pack["hotbar"]:
         hb = pack["hotbar"]
         print("  hotbar anchor=%s rect=(%s,%s) cols=%s rows=%s cell=%s gap=%s keys=%d" % (
             hb["anchor"], hb["x"], hb["y"], hb["cols"], hb["rows"], hb["cell"], hb["gap"],
             len([k for k in hb["keys"] if k])))
 
-    problems = check_offsets(pack, EXPECTED_OFFSETS)
+    problems = check_geometry(pack, EXPECTED_GEOMETRY)
     if problems:
-        print("\nOFFSET MISMATCH vs Lead's table:", file=sys.stderr)
+        print("\nGEOMETRY MISMATCH vs Lead's table:", file=sys.stderr)
         for p in problems:
             print("  " + p, file=sys.stderr)
         return 1
-    print("offsets match Lead's table (%d elements)" % len(EXPECTED_OFFSETS))
+    print("geometry matches Lead's table (%d elements)" % len(EXPECTED_GEOMETRY))
     return 0
 
 
