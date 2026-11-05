@@ -112,6 +112,14 @@ data class AppSettings(
     var mouseRightStickRangeRight: Float = 1.0f,
     var mouseRightStickRangeBottom: Float = 1.0f,
 
+    // TERRADOCK（tModLoader 触屏控制 + 60 Hz 输入桥接）
+    /** 是否写 `<RAL HOME>/ral_controls/state.bin` 输入桥接文件（TMLMobileFeel 读取） */
+    var terradockBridgeEnabled: Boolean = true,
+    /** 是否把内置 TERRADOCK 控制包作为默认（仅当用户没配置过自己的控件包时生效） */
+    var terradockControlPackEnabled: Boolean = true,
+    /** 瞄准模式：0 = Aim Only（瞄准不自动攻击），1 = Aim & Use（越界自动按住开火） */
+    var terradockAimMode: Int = 1,
+
     // 开发者设置
     var logSystemEnabled: Boolean = true,
     var verboseLogging: Boolean = false,

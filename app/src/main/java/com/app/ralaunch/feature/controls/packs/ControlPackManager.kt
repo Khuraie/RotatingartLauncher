@@ -156,6 +156,17 @@ class ControlPackManager(private val context: Context) {
         }
         return state.selectedPackId
     }
+
+    /**
+     * 用户是否已经显式选择过控件包（`pack_manager.json` 里存在 selectedPackId）。
+     *
+     * 与 [getSelectedPackId] 的区别：后者在未选择时会自动落盘一个默认选择，
+     * 因此不能用它判断「用户是否配置过」。TERRADOCK 内置控制包只在返回 false 时设为默认。
+     */
+    fun hasUserSelectedPack(): Boolean {
+        if (!managerStateFile.exists()) return false
+        return loadManagerState().selectedPackId != null
+    }
     
     /**
      * 设置当前选中的控件包 ID

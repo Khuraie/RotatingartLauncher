@@ -502,6 +502,17 @@ sealed class ControlData {
         
         /** 使用纹理透明度作为点击区域 */
         var useTextureAlphaHitTest: Boolean = false
+
+        /**
+         * TERRADOCK 动作名（对应 bridge-spec.md 的动作位，如 "JUMP"/"INTERACT"）。
+         * 仅用于 launcher 侧桥接上报/诊断；实际合成仍由 [keycode] 决定。
+         */
+        var terradockAction: String = ""
+
+        /**
+         * true = 该按钮只上报桥接动作位，不向桌面转发输入（如缩放/目标锁定）。
+         */
+        var terradockBridgeOnly: Boolean = false
     }
 
     @Serializable
@@ -524,6 +535,14 @@ sealed class ControlData {
         ) // [up, right, down, left] 的键码
         var mode: Mode = Mode.KEYBOARD
         var isRightStick: Boolean = false // 手柄模式：true=右摇杆, false=左摇杆
+
+        /**
+         * TERRADOCK 摇杆角色："" = 普通摇杆；"move" = 移动摇杆（→ WASD）；
+         * "aim" = 瞄准摇杆（→ 相对鼠标 + 自动开火）。
+         * 非空时由 [com.app.ralaunch.feature.terradock.TerradockRecordingBridge] 接管合成，
+         * 并作为 bridge-spec.md 的模拟摇杆值上报。
+         */
+        var terradockStick: String = ""
         
         /** 摇杆纹理配置 */
         var texture: JoystickTextureConfig = JoystickTextureConfig()

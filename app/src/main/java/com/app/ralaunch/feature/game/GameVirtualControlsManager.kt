@@ -18,6 +18,9 @@ import com.app.ralaunch.feature.controls.bridges.SDLInputBridge
 import com.app.ralaunch.feature.controls.editors.ui.GameControlsOverlay
 import com.app.ralaunch.feature.controls.packs.ControlPackManager
 import com.app.ralaunch.feature.controls.ui.ControlLayout
+import com.app.ralaunch.feature.terradock.TerradockBridgeService
+import com.app.ralaunch.feature.terradock.TerradockControlPack
+import com.app.ralaunch.feature.terradock.TerradockRecordingBridge
 import com.app.ralaunch.core.common.SettingsAccess
 import com.app.ralaunch.core.logging.AppLog
 import com.app.ralaunch.feature.main.ui.background.FPSDisplayView
@@ -37,6 +40,13 @@ class GameVirtualControlsManager {
     var controlLayout: ControlLayout? = null
         private set
     var inputBridge: SDLInputBridge? = null
+        private set
+
+    /**
+     * TERRADOCK 输入合成/桥接装饰层：所有虚拟控件都经它转发到 [inputBridge]，
+     * 同时把实际合成状态写进 60 Hz 桥接文件（`<RAL HOME>/ral_controls/state.bin`）。
+     */
+    var terradockBridge: TerradockRecordingBridge? = null
         private set
     private var fpsDisplayView: FPSDisplayView? = null
     private var settingsManager: SettingsAccess? = null
@@ -70,10 +80,21 @@ class GameVirtualControlsManager {
         try {
             settingsManager = SettingsAccess
             inputBridge = SDLInputBridge()
+            val recordingBridge = TerradockRecordingBridge(inputBridge!!)
+            terradockBridge = recordingBridge
             onExitGameCallback = onExitGame
 
+            // TERRADOCK 默认控制包：只在用户还没配置过控件包时安装并选中（设置可关闭）
+            runCatching {
+                val packManager: ControlPackManager =
+                    KoinJavaComponent.get(ControlPackManager::class.java)
+                TerradockControlPack.ensureInstalledAsDefault(activity.applicationContext, packManager)
+            }.onFailure {
+                AppLog.w("GameVirtualControls", "Terradock control pack setup failed: ${it.message}")
+            }
+
             controlLayout = ControlLayout(activity).apply {
-                this.inputBridge = this@GameVirtualControlsManager.inputBridge
+                this.inputBridge = recordingBridge
                 loadLayoutFromPackManager()
             }
             disableClippingRecursive(controlLayout!!)
@@ -101,6 +122,13 @@ class GameVirtualControlsManager {
                 // 添加 Compose 悬浮菜单
                 setupComposeOverlay(activity, layout)
             }
+
+            // TERRADOCK 60 Hz 输入桥接（Choreographer 帧回调写盘）
+            TerradockBridgeService.start(
+                activity = activity,
+                bridge = recordingBridge,
+                controlsVisible = { controlLayout?.isControlsVisible ?: true }
+            )
         } catch (e: Exception) {
             AppLog.e("GameVirtualControls", "Failed to initialize virtual controls", e)
         }
@@ -262,6 +290,7 @@ class GameVirtualControlsManager {
     }
 
     fun stop() {
+        TerradockBridgeService.stop()
         fpsDisplayView?.stop()
         com.app.ralaunch.core.common.ConsoleManager.stop()
     }

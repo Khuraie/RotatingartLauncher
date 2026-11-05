@@ -15,6 +15,8 @@ import org.koin.java.KoinJavaComponent
 import com.app.ralaunch.feature.controls.bridges.ControlInputBridge
 import com.app.ralaunch.feature.controls.ControlData
 import com.app.ralaunch.feature.controls.packs.ControlLayout as PackControlLayout
+import com.app.ralaunch.feature.terradock.TerradockBridgeFormat
+import com.app.ralaunch.feature.terradock.TerradockInputState
 import com.app.ralaunch.core.logging.AppLog
 import java.io.File
 import kotlin.math.abs
@@ -339,7 +341,7 @@ class ControlLayout : FrameLayout {
         val actionIndex = event.actionIndex
         val pointerId = event.getPointerId(actionIndex)
 
-        return when (action) {
+        val handled = when (action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN ->
                 handlePointerDown(event, actionIndex, pointerId)
             MotionEvent.ACTION_MOVE ->
@@ -354,6 +356,36 @@ class ControlLayout : FrameLayout {
                 true
             }
         }
+        // TERRADOCK：把真实触点快照进桥接状态（mod 画触点/涟漪用）
+        recordTerradockTouches(event)
+        return handled
+    }
+
+    /** 复用数组，避免每个触摸事件分配（最多 10 个触点） */
+    private val mTerradockTouchIds = IntArray(TerradockBridgeFormat.TOUCH_COUNT)
+    private val mTerradockTouchXs = FloatArray(TerradockBridgeFormat.TOUCH_COUNT)
+    private val mTerradockTouchYs = FloatArray(TerradockBridgeFormat.TOUCH_COUNT)
+    private val mTerradockTouchPressures = FloatArray(TerradockBridgeFormat.TOUCH_COUNT)
+    private val mTerradockTouchConsumed = BooleanArray(TerradockBridgeFormat.TOUCH_COUNT)
+
+    private fun recordTerradockTouches(event: MotionEvent) {
+        val n = minOf(event.pointerCount, TerradockBridgeFormat.TOUCH_COUNT)
+        for (i in 0 until n) {
+            val id = event.getPointerId(i)
+            mTerradockTouchIds[i] = id
+            mTerradockTouchXs[i] = event.getX(i)
+            mTerradockTouchYs[i] = event.getY(i)
+            mTerradockTouchPressures[i] = event.getPressure(i)
+            mTerradockTouchConsumed[i] = mPointerToControl.containsKey(id)
+        }
+        TerradockInputState.setTouches(
+            n,
+            mTerradockTouchIds,
+            mTerradockTouchXs,
+            mTerradockTouchYs,
+            mTerradockTouchPressures,
+            mTerradockTouchConsumed
+        )
     }
 
     /**

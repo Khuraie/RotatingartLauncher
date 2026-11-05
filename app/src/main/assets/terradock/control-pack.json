@@ -1,0 +1,233 @@
+{
+  "format": "terradock-control-pack",
+  "version": 2,
+  "name": "Terradock touch v2",
+  "generatedBy": "tools/terradock/gen_control_pack.py",
+  "source": "terradock/control-pack-ref.json",
+  "note": "Reference canvas 2400x1080. Runtime mapping: u = surfaceHeightPx/1080; pos_px = anchorPointPx + (cx-anchorRef)*u; sizes scale by u. Anchor rule: nearest of the 9 anchor points per axis.",
+  "reference": {
+    "w": 2400,
+    "h": 1080
+  },
+  "sticks": [
+    {
+      "id": "move",
+      "mode": "move",
+      "anchor": "BL",
+      "cx": 510,
+      "cy": 1030,
+      "radius": 150,
+      "deadzone": 0.12
+    },
+    {
+      "id": "aim",
+      "mode": "aim",
+      "anchor": "BR",
+      "cx": 2190,
+      "cy": 1030,
+      "radius": 150,
+      "deadzone": 0.12
+    }
+  ],
+  "buttons": [
+    {
+      "id": "hand",
+      "action": "INTERACT",
+      "anchor": "CL",
+      "cx": 186,
+      "cy": 752,
+      "size": 100,
+      "keycode": "MOUSE_RIGHT",
+      "label": "INTERACT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "jump",
+      "action": "JUMP",
+      "anchor": "CR",
+      "cx": 2214,
+      "cy": 752,
+      "size": 116,
+      "keycode": "KEYBOARD_SPACE",
+      "label": "JUMP",
+      "bridgeOnly": false
+    },
+    {
+      "id": "heal",
+      "action": "HEAL",
+      "anchor": "CL",
+      "cx": 534,
+      "cy": 752,
+      "size": 100,
+      "keycode": "KEYBOARD_H",
+      "label": "HEAL",
+      "bridgeOnly": false
+    },
+    {
+      "id": "mount",
+      "action": "MOUNT",
+      "anchor": "CR",
+      "cx": 1892,
+      "cy": 752,
+      "size": 84,
+      "keycode": "KEYBOARD_R",
+      "label": "MOUNT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "mana",
+      "action": "MANA",
+      "anchor": "BL",
+      "cx": 590,
+      "cy": 886,
+      "size": 90,
+      "keycode": "KEYBOARD_J",
+      "label": "MANA",
+      "bridgeOnly": false
+    },
+    {
+      "id": "use",
+      "action": "FIRE",
+      "anchor": "BR",
+      "cx": 2266,
+      "cy": 880,
+      "size": 116,
+      "keycode": "MOUSE_LEFT",
+      "label": "USE",
+      "bridgeOnly": false
+    },
+    {
+      "id": "zoomout",
+      "action": "ZOOM_OUT",
+      "anchor": "BC",
+      "cx": 724,
+      "cy": 1006,
+      "size": 80,
+      "keycode": "KEYBOARD_PAGEDOWN",
+      "label": "ZOOM -",
+      "bridgeOnly": true
+    },
+    {
+      "id": "buff",
+      "action": "BUFF",
+      "anchor": "BL",
+      "cx": 540,
+      "cy": 1012,
+      "size": 90,
+      "keycode": "KEYBOARD_B",
+      "label": "BUFF",
+      "bridgeOnly": false
+    },
+    {
+      "id": "grapple",
+      "action": "GRAPPLE",
+      "anchor": "BR",
+      "cx": 2242,
+      "cy": 1010,
+      "size": 90,
+      "keycode": "KEYBOARD_E",
+      "label": "GRAPPLE",
+      "bridgeOnly": false
+    },
+    {
+      "id": "target",
+      "action": "TARGET_LOCK",
+      "anchor": "BR",
+      "cx": 2110,
+      "cy": 1042,
+      "size": 84,
+      "keycode": "KEYBOARD_TAB",
+      "label": "LOCK",
+      "bridgeOnly": true
+    },
+    {
+      "id": "smart",
+      "action": "SMART_CURSOR",
+      "anchor": "BR",
+      "cx": 1892,
+      "cy": 1042,
+      "size": 84,
+      "keycode": "KEYBOARD_LSHIFT",
+      "label": "SMART",
+      "bridgeOnly": false
+    },
+    {
+      "id": "zoomin",
+      "action": "ZOOM_IN",
+      "anchor": "BC",
+      "cx": 1676,
+      "cy": 1006,
+      "size": 80,
+      "keycode": "KEYBOARD_PAGEUP",
+      "label": "ZOOM +",
+      "bridgeOnly": true
+    },
+    {
+      "id": "map",
+      "action": "MAP",
+      "anchor": "TR",
+      "cx": 2342,
+      "cy": 56,
+      "size": 64,
+      "keycode": "KEYBOARD_M",
+      "label": "map",
+      "bridgeOnly": false
+    },
+    {
+      "id": "bag",
+      "action": "INVENTORY",
+      "anchor": "TR",
+      "cx": 2342,
+      "cy": 132,
+      "size": 64,
+      "keycode": "KEYBOARD_ESCAPE",
+      "label": "bag",
+      "bridgeOnly": false
+    },
+    {
+      "id": "gear",
+      "action": "MENU",
+      "anchor": "TR",
+      "cx": 2342,
+      "cy": 208,
+      "size": 64,
+      "keycode": "KEYBOARD_ESCAPE",
+      "label": "gear",
+      "bridgeOnly": false
+    },
+    {
+      "id": "pause",
+      "action": "MENU",
+      "anchor": "CR",
+      "cx": 2342,
+      "cy": 284,
+      "size": 64,
+      "keycode": "KEYBOARD_ESCAPE",
+      "label": "pause",
+      "bridgeOnly": false
+    }
+  ],
+  "hotbar": {
+    "anchor": "TL",
+    "x": 12,
+    "y": 12,
+    "cols": 6,
+    "rows": 2,
+    "cell": 150,
+    "gap": 8,
+    "keys": [
+      "KEYBOARD_1",
+      "KEYBOARD_2",
+      "KEYBOARD_3",
+      "KEYBOARD_4",
+      "KEYBOARD_5",
+      "KEYBOARD_6",
+      "KEYBOARD_7",
+      "KEYBOARD_8",
+      "KEYBOARD_9",
+      "KEYBOARD_0",
+      "",
+      ""
+    ]
+  }
+}

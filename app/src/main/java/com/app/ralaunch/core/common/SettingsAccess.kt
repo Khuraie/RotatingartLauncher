@@ -121,6 +121,20 @@ object SettingsAccess {
         get() = settings.mouseRightStickRangeBottom
         set(value) = update { mouseRightStickRangeBottom = value }
 
+    // TERRADOCK 设置
+    var isTerradockBridgeEnabled: Boolean
+        get() = settings.terradockBridgeEnabled
+        set(value) = update { terradockBridgeEnabled = value }
+
+    var isTerradockControlPackEnabled: Boolean
+        get() = settings.terradockControlPackEnabled
+        set(value) = update { terradockControlPackEnabled = value }
+
+    /** 0 = Aim Only，1 = Aim & Use */
+    var terradockAimMode: Int
+        get() = settings.terradockAimMode
+        set(value) = update { terradockAimMode = value }
+
     // 开发者设置
     var isLogSystemEnabled: Boolean
         get() = settings.logSystemEnabled

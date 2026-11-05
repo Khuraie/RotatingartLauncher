@@ -516,6 +516,22 @@ class VirtualJoystick(
         }
 
 
+        // TERRADOCK：摇杆角色由 launcher 桥接层接管合成（move→WASD / aim→相对鼠标+自动开火），
+        // 这里只上报半径归一化的模拟量，不再走原有的离散按键/绝对鼠标路径。
+        if (castedData.terradockStick.isNotEmpty()) {
+            val maxD = mRadius * STICK_BACKGROUND_SIZE
+            if (maxD > 0f) {
+                mInputBridge.sendStick(
+                    castedData.terradockStick,
+                    (dx / maxD).coerceIn(-1f, 1f),
+                    (dy / maxD).coerceIn(-1f, 1f)
+                )
+            }
+            mCurrentDirection = calculateDirection(dx, dy, distance)
+            invalidate()
+            return
+        }
+
         // 根据模式发送不同的输入事件
         when (castedData.mode) {
             ControlData.Joystick.Mode.MOUSE -> {
@@ -557,6 +573,14 @@ class VirtualJoystick(
 
     private fun handleRelease() {
         resetStick()
+
+        // TERRADOCK 摇杆：回中并上报 0
+        if (castedData.terradockStick.isNotEmpty()) {
+            mInputBridge.sendStick(castedData.terradockStick, 0f, 0f)
+            mCurrentDirection = DIR_NONE
+            invalidate()
+            return
+        }
 
         // 根据模式执行不同的释放操作
         when (castedData.mode) {

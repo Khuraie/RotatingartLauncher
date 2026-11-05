@@ -80,4 +80,16 @@ interface ControlInputBridge {
      * 关闭文字输入（关闭输入法）
      */
     fun stopTextInput()
+
+    /**
+     * （可选）上报摇杆模拟量，供 TERRADOCK 桥接/合成使用。
+     *
+     * 默认空实现：只有支持模拟摇杆合成的桥（TerradockRecordingBridge）会接管；
+     * 普通控件路径不受影响。
+     *
+     * @param stick 摇杆角色："move" 或 "aim"
+     * @param x X 轴（-1..1，右为正）
+     * @param y Y 轴（-1..1，下为正，屏幕坐标）
+     */
+    fun sendStick(stick: String, x: Float, y: Float) {}
 }
