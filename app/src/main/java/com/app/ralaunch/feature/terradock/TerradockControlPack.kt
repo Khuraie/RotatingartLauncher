@@ -228,15 +228,18 @@ object TerradockControlPack {
         // 每次启动都同步一次（安装逻辑只在版本变化时跑）
         upToJumpModeSetting = asset.settings["LeftStickJump"].orEmpty()
         val installed = manager.getPackInfo(PACK_ID)
-        if (installed == null || installed.versionCode != asset.version) {
+        val packUpdated = installed == null || installed.versionCode != asset.version
+        if (packUpdated) {
             val ok = install(context, manager, asset)
             if (!ok) return false
         }
 
         val userConfigured = runCatching { manager.hasUserSelectedPack() }.getOrDefault(false)
-        if (!userConfigured || selected == PACK_ID) {
+        if (!userConfigured || selected == PACK_ID || packUpdated) {
+            // packUpdated: when the bundled TERRADOCK pack content changes (geometry/art ownership
+            // moved to the mod), make it active once so the launcher touch zones match the drawn HUD.
             manager.setSelectedPackId(PACK_ID)
-            AppLog.i(TAG, "Terradock control pack is the active default (userConfigured=$userConfigured)")
+            AppLog.i(TAG, "Terradock control pack is the active default (userConfigured=$userConfigured, packUpdated=$packUpdated)")
             installTemplates(context, manager)
             return true
         }
@@ -283,7 +286,7 @@ object TerradockControlPack {
     }
 
     /**
-     * 把内置 `assets/terradock/images/**` 的 PNG 复制到已安装控件包目录的 `assets/` 下，
+     * 把内置 `assets/terradock/images/` 下的 PNG 复制到已安装控件包目录的 `assets/` 下，
      * 保持 [images] 里的相对路径。控件包的 `TextureLoader` 会按这些相对路径加载贴图。
      */
     private fun copyPackImages(context: Context, manager: ControlPackManager, packId: String, images: List<String>) {
