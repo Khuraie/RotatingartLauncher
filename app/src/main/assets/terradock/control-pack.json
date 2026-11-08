@@ -483,5 +483,56 @@
       "label": "Custom"
     }
   ],
-  "versionKind": "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings)"
+  "versionKind": "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings)",
+  "profiles": [
+    {
+      "id": "Profile1",
+      "name": "",
+      "hardwareStyle": "Profile1"
+    },
+    {
+      "id": "Profile2",
+      "name": "",
+      "hardwareStyle": "Profile2"
+    },
+    {
+      "id": "Profile3",
+      "name": "",
+      "hardwareStyle": "Profile3"
+    },
+    {
+      "id": "Profile4",
+      "name": "",
+      "hardwareStyle": "Profile4"
+    },
+    {
+      "id": "Legacy",
+      "name": "",
+      "hardwareStyle": "Legacy"
+    },
+    {
+      "id": "Simple",
+      "name": "",
+      "hardwareStyle": "Simple"
+    },
+    {
+      "id": "Advanced",
+      "name": "",
+      "hardwareStyle": "Advanced"
+    }
+  ],
+  "hardwareStyles": [
+    "Profile1",
+    "Profile2",
+    "Profile3",
+    "Profile4",
+    "Default",
+    "Legacy",
+    "Xenopunk",
+    "Roboarms",
+    "Nescre",
+    "Angryhippo",
+    "Simple",
+    "Advanced"
+  ]
 }

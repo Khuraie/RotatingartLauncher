@@ -1,0 +1,150 @@
+{
+  "format": "terradock-control-pack",
+  "version": 715154027,
+  "name": "Terradock Roboarms",
+  "generatedBy": "tools/terradock/gen_control_pack.py --templates",
+  "source": "terradock/control-system (mobile UILayout VirtualControlsStyles_Layout)",
+  "reference": {
+    "w": 2400,
+    "h": 1080
+  },
+  "templateId": "Roboarms",
+  "hardwareStyle": "Roboarms",
+  "profile": "",
+  "sticks": [
+    {
+      "id": "move",
+      "mode": "move",
+      "anchor": "BL",
+      "cx": 161.375,
+      "cy": 873.8749885559082,
+      "ox": 161.375,
+      "oy": -206.1250114440918,
+      "radius": 120,
+      "deadzone": 0.12
+    },
+    {
+      "id": "aim",
+      "mode": "aim",
+      "anchor": "BR",
+      "cx": 2109.25,
+      "cy": 855.1249885559082,
+      "ox": -290.75,
+      "oy": -224.8750114440918,
+      "radius": 120,
+      "deadzone": 0.12
+    }
+  ],
+  "buttons": [
+    {
+      "id": "s1",
+      "action": "INTERACT",
+      "anchor": "CL",
+      "cx": 35.75,
+      "cy": 689.375,
+      "ox": 35.75,
+      "oy": 149.375,
+      "size": 137,
+      "keycode": "MOUSE_RIGHT",
+      "label": "INTERACT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s5",
+      "action": "MOUNT",
+      "anchor": "CL",
+      "cx": 388.25,
+      "cy": 674.375,
+      "ox": 388.25,
+      "oy": 134.375,
+      "size": 103,
+      "keycode": "KEYBOARD_R",
+      "label": "MOUNT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s6",
+      "action": "FIRE",
+      "anchor": "CR",
+      "cx": 1936.75,
+      "cy": 683.75,
+      "ox": -463.25,
+      "oy": 143.75,
+      "size": 103,
+      "keycode": "MOUSE_LEFT",
+      "label": "FIRE",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s7",
+      "action": "JUMP",
+      "anchor": "CR",
+      "cx": 2287.375,
+      "cy": 659.375,
+      "ox": -112.625,
+      "oy": 119.375,
+      "size": 137,
+      "keycode": "KEYBOARD_SPACE",
+      "label": "JUMP",
+      "bridgeOnly": false
+    }
+  ],
+  "groups": [
+    {
+      "id": "group_S3",
+      "action": "",
+      "anchor": "BR",
+      "cx": 1861.75,
+      "cy": 921.875,
+      "ox": -538.25,
+      "oy": -158.125,
+      "centre": 96,
+      "sectors": [
+        {
+          "action": "AIM_MODE",
+          "keycode": "KEYBOARD_F1",
+          "label": "AIM_MODE"
+        },
+        {
+          "action": "TARGET_LOCK",
+          "keycode": "KEYBOARD_TAB",
+          "label": "TARGET_LOCK"
+        },
+        {
+          "action": "SMART_CURSOR",
+          "keycode": "KEYBOARD_LSHIFT",
+          "label": "SMART_CURSOR"
+        }
+      ]
+    },
+    {
+      "id": "group_S4",
+      "action": "",
+      "anchor": "BL",
+      "cx": 423.875,
+      "cy": 899.375,
+      "ox": 423.875,
+      "oy": -180.625,
+      "centre": 96,
+      "sectors": [
+        {
+          "action": "MANA",
+          "keycode": "KEYBOARD_J",
+          "label": "MANA"
+        },
+        {
+          "action": "HEAL",
+          "keycode": "KEYBOARD_H",
+          "label": "HEAL"
+        },
+        {
+          "action": "BUFF",
+          "keycode": "KEYBOARD_B",
+          "label": "BUFF"
+        }
+      ]
+    }
+  ],
+  "hotbar": null,
+  "versionKind": "content-hash (crc32 of reference/sticks/buttons/groups)"
+}

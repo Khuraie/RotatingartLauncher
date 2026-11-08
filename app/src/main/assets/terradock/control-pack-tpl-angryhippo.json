@@ -1,0 +1,123 @@
+{
+  "format": "terradock-control-pack",
+  "version": 1355670569,
+  "name": "Terradock Angryhippo",
+  "generatedBy": "tools/terradock/gen_control_pack.py --templates",
+  "source": "terradock/control-system (mobile UILayout VirtualControlsStyles_Layout)",
+  "reference": {
+    "w": 2400,
+    "h": 1080
+  },
+  "templateId": "Angryhippo",
+  "hardwareStyle": "Angryhippo",
+  "profile": "",
+  "sticks": [
+    {
+      "id": "move",
+      "mode": "move",
+      "anchor": "BL",
+      "cx": 272.0,
+      "cy": 860.0,
+      "ox": 272.0,
+      "oy": -220.0,
+      "radius": 120,
+      "deadzone": 0.12
+    }
+  ],
+  "buttons": [
+    {
+      "id": "s1",
+      "action": "INTERACT",
+      "anchor": "BR",
+      "cx": 2008.0,
+      "cy": 871.25,
+      "ox": -392.0,
+      "oy": -208.75,
+      "size": 103,
+      "keycode": "MOUSE_RIGHT",
+      "label": "INTERACT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s3",
+      "action": "FIRE",
+      "anchor": "BR",
+      "cx": 2169.25,
+      "cy": 856.25,
+      "ox": -230.75,
+      "oy": -223.75,
+      "size": 103,
+      "keycode": "MOUSE_LEFT",
+      "label": "FIRE",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s4",
+      "action": "MOUNT",
+      "anchor": "CL",
+      "cx": 133.25,
+      "cy": 721.25,
+      "ox": 133.25,
+      "oy": 181.25,
+      "size": 103,
+      "keycode": "KEYBOARD_R",
+      "label": "MOUNT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s5",
+      "action": "JUMP",
+      "anchor": "CR",
+      "cx": 2244.25,
+      "cy": 717.5,
+      "ox": -155.75,
+      "oy": 177.5,
+      "size": 137,
+      "keycode": "KEYBOARD_SPACE",
+      "label": "JUMP",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s6",
+      "action": "GRAPPLE",
+      "anchor": "CR",
+      "cx": 2086.75,
+      "cy": 740.0,
+      "ox": -313.25,
+      "oy": 200.0,
+      "size": 75,
+      "keycode": "KEYBOARD_E",
+      "label": "GRAPPLE",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s7",
+      "action": "SMART_CURSOR",
+      "anchor": "BL",
+      "cx": 425.75,
+      "cy": 965.0,
+      "ox": 425.75,
+      "oy": -115.0,
+      "size": 103,
+      "keycode": "KEYBOARD_LSHIFT",
+      "label": "SMART_CURSOR",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s8",
+      "action": "TARGET_LOCK",
+      "anchor": "BR",
+      "cx": 2086.75,
+      "cy": 965.0,
+      "ox": -313.25,
+      "oy": -115.0,
+      "size": 103,
+      "keycode": "KEYBOARD_TAB",
+      "label": "TARGET_LOCK",
+      "bridgeOnly": true
+    }
+  ],
+  "groups": [],
+  "hotbar": null,
+  "versionKind": "content-hash (crc32 of reference/sticks/buttons/groups)"
+}

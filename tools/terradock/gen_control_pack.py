@@ -290,7 +290,6 @@ def load_settings_defaults():
 
 
 def load_templates():
-    """Mobile touch-control templates (Default/Classic/Xenopunk/Roboarms/Nescre/AngryHippo/Custom)."""
     path = r"C:\Tmobile\terradock\control-system\mobile-settings.json"
     if not os.path.isfile(path):
         return []
@@ -300,6 +299,229 @@ def load_templates():
     except Exception:
         return []
     return data.get("presets", {}).get("templates", [])
+
+
+# =====================================================================================
+# Template (hardware style) packs — imported from Terraria mobile
+# `VirtualControlsStyles_Layout`: 12 HardwareStyles + 7 Profiles.
+#
+# Coordinate model, calibrated against the decoded default layout (error <= 0.5 px):
+#     ref_canvas_pos = stick_centre_ref + slot.Location * 1.875
+# where stick_centre_ref is (272,860) for LeftStick and (2128,860) for RightStick and
+# 1.875 is the mobile-UI -> 2400x1080 reference scale used everywhere else.
+# =====================================================================================
+STYLES_JSON = r"C:\Tmobile\terradock\control-system\mobile-styles.json"
+STYLES_RAW = r"C:\Tmobile\terradock\control-system\_styles_decoded_raw.json"
+STICK_CENTRES = {"LeftStick": (272.0, 860.0), "RightStick": (2128.0, 860.0)}
+LOCATION_SCALE = 1.875
+SIZE_BY_ACTION = {"Interact": 137, "Jump": 137, "Fire": 103, "Heal": 137, "Mana": 103,
+                  "Buff": 103, "Mount": 103, "SmartCursor": 103, "CombatTargetting": 103,
+                  "AutoFire": 103, "AutoSelect": 103, "GrappleFire": 75,
+                  "ZoomIn": 96, "ZoomOut": 96}
+TEMPLATE_OUT_DIR = os.path.join(REPO, "app", "src", "main", "assets", "terradock")
+
+
+def load_styles():
+    """Return (hardwareStyles, profiles) decoded from the APK UILayout asset, or (None, None)."""
+    profiles_path = r"C:\Tmobile\terradock\control-system\mobile-profiles.json"
+    if os.path.isfile(STYLES_JSON):
+        try:
+            with open(STYLES_JSON, "r", encoding="utf-8-sig") as f:
+                d = json.load(f)
+            if d.get("hardwareStyles"):
+                profiles = d.get("profiles", [])
+                if not profiles and os.path.isfile(profiles_path):
+                    with open(profiles_path, "r", encoding="utf-8-sig") as pf:
+                        profiles = json.load(pf).get("profiles", [])
+                return d["hardwareStyles"], profiles
+        except Exception:
+            pass
+    if os.path.isfile(STYLES_RAW):
+        try:
+            with open(STYLES_RAW, "r", encoding="utf-8-sig") as f:
+                d = json.load(f).get("data", {})
+            hw = [
+                {
+                    "id": h.get("Id", ""),
+                    "name": h.get("EditedName") or h.get("Id", ""),
+                    "slots": [
+                        {
+                            "slotId": s.get("SlotId", ""),
+                            "controlType": (s.get("Style") or {}).get("ControlType", ""),
+                            "styleId": (s.get("Style") or {}).get("ControlTypeId", ""),
+                            "defaultControl": s.get("DefaultControl", ""),
+                            "defaultGroupControl": s.get("DefaultGroupControl", []),
+                            "anchorControl": s.get("AnchorControl", ""),
+                            "anchor": s.get("Anchor", ""),
+                            "location": s.get("Location", [0, 0]),
+                            "multiTouch": bool(s.get("MultiTouch")),
+                        }
+                        for s in h.get("Slots", [])
+                    ],
+                }
+                for h in d.get("HardwareStyles", [])
+            ]
+            pf = [
+                {
+                    "id": p.get("Id", ""),
+                    "name": p.get("EditedName") or p.get("Id", ""),
+                    "hardwareStyle": p.get("Hardware", ""),
+                    "bindings": [
+                        {
+                            "slotId": c.get("SlotId", ""),
+                            "action": c.get("Action", ""),
+                            "groupActions": c.get("GroupActions", []),
+                        }
+                        for c in p.get("Controls", [])
+                    ],
+                }
+                for p in d.get("Profiles", [])
+            ]
+            return hw, pf
+        except Exception as e:
+            print("  warn: cannot read %s: %s" % (STYLES_RAW, e), file=sys.stderr)
+    return None, None
+
+
+def ref_point(anchor_control, loc):
+    base = STICK_CENTRES.get(anchor_control)
+    if not base or not loc:
+        return None
+    return base[0] + loc[0] * LOCATION_SCALE, base[1] + loc[1] * LOCATION_SCALE
+
+
+def build_template_pack(style, profile):
+    """One pack per mobile hardware style, with profile bindings applied."""
+    bind = {}
+    group_bind = {}
+    if profile:
+        for b in profile.get("bindings", []):
+            bind[b.get("slotId", "")] = b.get("action", "")
+            if b.get("groupActions"):
+                group_bind[b.get("slotId", "")] = b["groupActions"]
+
+    out = {
+        "format": "terradock-control-pack",
+        "version": 2,
+        "name": "Terradock " + (style.get("name") or style.get("id", "")),
+        "generatedBy": "tools/terradock/gen_control_pack.py --templates",
+        "source": "terradock/control-system (mobile UILayout VirtualControlsStyles_Layout)",
+        "reference": {"w": REF_W, "h": REF_H},
+        "templateId": style.get("id", ""),
+        "hardwareStyle": style.get("id", ""),
+        "profile": profile.get("id", "") if profile else "",
+        "sticks": [],
+        "buttons": [],
+        "groups": [],
+        "hotbar": None,
+    }
+
+    for slot in style.get("slots", []):
+        ct = slot.get("controlType", "")
+        action_mobile = bind.get(slot.get("slotId", "")) or slot.get("defaultControl", "")
+        loc = slot.get("location") or [0, 0]
+        pt = ref_point(slot.get("anchorControl", ""), loc)
+        if pt is None:
+            continue
+        cx, cy = pt
+
+        if ct == "Axis":
+            if action_mobile in ("Move", "Aim"):
+                role = "move" if action_mobile == "Move" else "aim"
+                anchor = anchor_for(cx, cy)
+                ox, oy = offsets_for(anchor, cx, cy)
+                out["sticks"].append({
+                    "id": role, "mode": role, "anchor": anchor, "cx": cx, "cy": cy,
+                    "ox": ox, "oy": oy, "radius": 120, "deadzone": 0.12,
+                })
+                continue
+            # other axes are drawn as a compact button in the port
+            action = ACTION_ALIASES.get(action_mobile)
+            if not action:
+                continue
+            key, bridge_only = ACTION_KEYS.get(action, ("UNKNOWN", True))
+            anchor = anchor_for(cx, cy)
+            ox, oy = offsets_for(anchor, cx, cy)
+            out["buttons"].append({
+                "id": "axis_" + slot.get("slotId", ""), "action": action, "anchor": anchor,
+                "cx": cx, "cy": cy, "ox": ox, "oy": oy, "size": SIZE_BY_ACTION.get(action_mobile, 75),
+                "keycode": key, "label": action, "bridgeOnly": bridge_only,
+            })
+            continue
+
+        if ct == "Group":
+            sectors = group_bind.get(slot.get("slotId", "")) or slot.get("defaultGroupControl", [])
+            secs = []
+            for s in sectors[:4]:
+                if not s or s == "Count":
+                    continue
+                act = ACTION_ALIASES.get(s)
+                if not act:
+                    continue
+                key, _ = ACTION_KEYS.get(act, ("UNKNOWN", True))
+                secs.append({"action": act, "keycode": key, "label": act})
+            if not secs:
+                continue
+            anchor = anchor_for(cx, cy)
+            ox, oy = offsets_for(anchor, cx, cy)
+            out["groups"].append({
+                "id": "group_" + slot.get("slotId", ""), "action": "", "anchor": anchor,
+                "cx": cx, "cy": cy, "ox": ox, "oy": oy, "centre": 96, "sectors": secs,
+            })
+            continue
+
+        # Button
+        action = ACTION_ALIASES.get(action_mobile)
+        if not action:
+            continue
+        key, bridge_only = ACTION_KEYS.get(action, ("UNKNOWN", True))
+        if key == "UNKNOWN":
+            continue
+        anchor = anchor_for(cx, cy)
+        ox, oy = offsets_for(anchor, cx, cy)
+        out["buttons"].append({
+            "id": slot.get("slotId", "").lower(), "action": action, "anchor": anchor,
+            "cx": cx, "cy": cy, "ox": ox, "oy": oy,
+            "size": SIZE_BY_ACTION.get(action_mobile, 103),
+            "keycode": key, "label": action, "bridgeOnly": bridge_only,
+        })
+
+    return out
+
+
+def write_template_packs(pack):
+    """Emit one `control-pack-tpl-<style>.json` per mobile hardware style."""
+    styles, profiles = load_styles()
+    if not styles:
+        print("  (no decoded mobile styles found; skipping template packs)")
+        return 0
+    by_hw = {p.get("hardwareStyle", ""): p for p in profiles}
+    written = 0
+    for style in styles:
+        sid = style.get("id", "")
+        if not sid:
+            continue
+        tpl = build_template_pack(style, by_hw.get(sid))
+        payload = {k: tpl[k] for k in ("reference", "sticks", "buttons", "groups")}
+        tpl["version"] = zlib.crc32(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ) & 0x7FFFFFFF
+        tpl["versionKind"] = "content-hash (crc32 of reference/sticks/buttons/groups)"
+        path = os.path.join(TEMPLATE_OUT_DIR, "control-pack-tpl-%s.json" % sid.lower())
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(tpl, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        written += 1
+        print("  template %-10s -> %s (%d buttons, %d groups, %d sticks)" % (
+            sid, os.path.basename(path), len(tpl["buttons"]), len(tpl["groups"]), len(tpl["sticks"])))
+    # expose the profile/template catalogue in the main pack
+    pack["profiles"] = [
+        {"id": p.get("id", ""), "name": p.get("name", ""), "hardwareStyle": p.get("hardwareStyle", "")}
+        for p in profiles
+    ]
+    pack["hardwareStyles"] = [s.get("id", "") for s in styles]
+    print("  catalogue: %d hardware styles, %d profiles" % (len(styles), len(profiles)))
+    return written
 
 
 # Terraria mobile ContolType (serialized layout enum) -> pack action id
@@ -334,6 +556,9 @@ def main():
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ) & 0x7FFFFFFF
     pack["versionKind"] = "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings)"
+
+    print("\nMobile template packs (imported control customisation):")
+    write_template_packs(pack)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:

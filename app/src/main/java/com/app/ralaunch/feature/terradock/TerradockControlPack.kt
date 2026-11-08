@@ -40,6 +40,12 @@ object TerradockControlPack {
     /** 内置资源路径 */
     const val ASSET_PATH = "terradock/control-pack.json"
 
+    /** 内置资源目录（模板包与主包同目录） */
+    const val ASSET_DIR = "terradock"
+
+    /** 从手机版导入的模板包前缀：control-pack-tpl-<style>.json */
+    const val TEMPLATE_PREFIX = "control-pack-tpl-"
+
     /** 参考画布（与 control-pack-ref.json 一致） */
     const val REF_W = 2400f
     const val REF_H = 1080f
@@ -147,10 +153,10 @@ object TerradockControlPack {
 
     // ===================== 资源加载 =====================
 
-    fun loadAsset(context: Context): PackAsset? = try {
-        val text = context.assets.open(ASSET_PATH).bufferedReader().use { it.readText() }
+    fun loadAsset(context: Context, path: String = ASSET_PATH): PackAsset? = try {
+        val text = context.assets.open(path).bufferedReader().use { it.readText() }
         json.decodeFromString<PackAsset>(text).also {
-            AppLog.i(TAG, "Loaded $ASSET_PATH v${it.version} (${it.buttons.size} buttons, ${it.sticks.size} sticks)")
+            AppLog.i(TAG, "Loaded $path v${it.version} (${it.buttons.size} buttons, ${it.sticks.size} sticks, ${it.groups.size} groups)")
         }
     } catch (t: Throwable) {
         AppLog.e(TAG, "Failed to load $ASSET_PATH: ${t.message}")
@@ -190,33 +196,66 @@ object TerradockControlPack {
         if (!userConfigured || selected == PACK_ID) {
             manager.setSelectedPackId(PACK_ID)
             AppLog.i(TAG, "Terradock control pack is the active default (userConfigured=$userConfigured)")
+            installTemplates(context, manager)
             return true
         }
+        installTemplates(context, manager)
         AppLog.i(TAG, "User already configured control pack '$selected'; leaving it untouched")
         return false
     }
 
-    private fun install(context: Context, manager: ControlPackManager, asset: PackAsset): Boolean {
+    private fun install(
+        context: Context,
+        manager: ControlPackManager,
+        asset: PackAsset,
+        packId: String = PACK_ID
+    ): Boolean {
         return try {
-            val layout = buildLayout(context, asset)
-            manager.savePackLayout(PACK_ID, layout)
+            val layout = buildLayout(context, asset, packId = packId)
+            manager.savePackLayout(packId, layout)
             // 覆盖 manifest 的版本/名称信息（savePackLayout 只写 name/updatedAt）
-            val manifest = File(File(manager.packsDir, PACK_ID), ControlPackInfo.MANIFEST_FILE_NAME)
+            val manifest = File(File(manager.packsDir, packId), ControlPackInfo.MANIFEST_FILE_NAME)
             val info = ControlPackInfo(
-                id = PACK_ID,
+                id = packId,
                 name = asset.name,
                 author = "TERRADOCK",
                 version = "1.0.${asset.version}",
                 versionCode = asset.version,
-                description = "TERRADOCK touch controls generated from control-pack-ref.json (2400x1080 reference canvas)"
+                description = if (packId == PACK_ID)
+                    "TERRADOCK touch controls generated from control-pack-ref.json (2400x1080 reference canvas)"
+                else
+                    "TERRADOCK mobile touch-control template '${asset.name}' (imported from Terraria mobile)"
             )
             info.saveTo(manifest)
-            AppLog.i(TAG, "Installed Terradock control pack v${asset.version} -> ${manifest.absolutePath}")
+            AppLog.i(TAG, "Installed Terradock control pack '$packId' v${asset.version} -> ${manifest.absolutePath}")
             true
         } catch (t: Throwable) {
-            AppLog.e(TAG, "Failed to install Terradock control pack: ${t.message}")
+            AppLog.e(TAG, "Failed to install Terradock control pack '$packId': ${t.message}")
             false
         }
+    }
+
+    /**
+     * 安装从手机版导入的控件模板（assets/terradock/control-pack-tpl-*.json）。
+     * 每个硬件样式一个包，作为普通控件包出现在 RAL 的控件包列表里供用户选择；
+     * 不改变当前选择。
+     */
+    private fun installTemplates(context: Context, manager: ControlPackManager) {
+        val files = runCatching { context.assets.list(ASSET_DIR)?.toList() ?: emptyList() }
+            .getOrDefault(emptyList())
+            .filter { it.startsWith(TEMPLATE_PREFIX) && it.endsWith(".json") }
+            .sorted()
+        files.forEach { file ->
+            val suffix = file.removePrefix(TEMPLATE_PREFIX).removeSuffix(".json")
+            if (suffix.isEmpty()) return@forEach
+            val packId = "${PACK_ID}_$suffix"
+            val asset = loadAsset(context, "$ASSET_DIR/$file") ?: return@forEach
+            val installed = manager.getPackInfo(packId)
+            if (installed == null || installed.versionCode != asset.version) {
+                install(context, manager, asset, packId)
+            }
+        }
+        AppLog.i(TAG, "Terradock templates available: ${files.size}")
     }
 
     // ===================== 参考坐标 → RAL 控件 =====================
@@ -228,10 +267,11 @@ object TerradockControlPack {
         context: Context,
         asset: PackAsset,
         surfaceW: Float = context.resources.displayMetrics.widthPixels.toFloat(),
-        surfaceH: Float = context.resources.displayMetrics.heightPixels.toFloat()
+        surfaceH: Float = context.resources.displayMetrics.heightPixels.toFloat(),
+        packId: String = PACK_ID
     ): ControlLayout {
         val layout = ControlLayout(name = asset.name)
-        layout.id = PACK_ID
+        layout.id = packId
         val controls = mutableListOf<ControlData>()
         val u = surfaceH / (asset.reference.h.takeIf { it > 0f } ?: REF_H)
 

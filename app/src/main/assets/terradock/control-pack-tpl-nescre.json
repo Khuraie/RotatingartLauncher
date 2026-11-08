@@ -1,0 +1,163 @@
+{
+  "format": "terradock-control-pack",
+  "version": 415869346,
+  "name": "Terradock Nescre",
+  "generatedBy": "tools/terradock/gen_control_pack.py --templates",
+  "source": "terradock/control-system (mobile UILayout VirtualControlsStyles_Layout)",
+  "reference": {
+    "w": 2400,
+    "h": 1080
+  },
+  "templateId": "Nescre",
+  "hardwareStyle": "Nescre",
+  "profile": "",
+  "sticks": [
+    {
+      "id": "aim",
+      "mode": "aim",
+      "anchor": "BR",
+      "cx": 2219.875,
+      "cy": 855.1249885559082,
+      "ox": -180.125,
+      "oy": -224.8750114440918,
+      "radius": 120,
+      "deadzone": 0.12
+    },
+    {
+      "id": "move",
+      "mode": "move",
+      "anchor": "BL",
+      "cx": 197.0,
+      "cy": 860.7499885559082,
+      "ox": 197.0,
+      "oy": -219.2500114440918,
+      "radius": 120,
+      "deadzone": 0.12
+    }
+  ],
+  "buttons": [
+    {
+      "id": "s2",
+      "action": "INTERACT",
+      "anchor": "CL",
+      "cx": 8.5625,
+      "cy": 721.25,
+      "ox": 8.5625,
+      "oy": 181.25,
+      "size": 137,
+      "keycode": "MOUSE_RIGHT",
+      "label": "INTERACT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s10",
+      "action": "FIRE",
+      "anchor": "BR",
+      "cx": 1998.625,
+      "cy": 950.9375,
+      "ox": -401.375,
+      "oy": -129.0625,
+      "size": 103,
+      "keycode": "MOUSE_LEFT",
+      "label": "FIRE",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s13",
+      "action": "MOUNT",
+      "anchor": "CR",
+      "cx": 2391.4375,
+      "cy": 706.25,
+      "ox": -8.5625,
+      "oy": 166.25,
+      "size": 103,
+      "keycode": "KEYBOARD_R",
+      "label": "MOUNT",
+      "bridgeOnly": false
+    },
+    {
+      "id": "s15",
+      "action": "ZOOM_OUT",
+      "anchor": "BL",
+      "cx": 521.375,
+      "cy": 975.3125,
+      "ox": 521.375,
+      "oy": -104.6875,
+      "size": 96,
+      "keycode": "KEYBOARD_PAGEDOWN",
+      "label": "ZOOM_OUT",
+      "bridgeOnly": true
+    },
+    {
+      "id": "s16",
+      "action": "ZOOM_IN",
+      "anchor": "BR",
+      "cx": 1882.375,
+      "cy": 975.3125,
+      "ox": -517.625,
+      "oy": -104.6875,
+      "size": 96,
+      "keycode": "KEYBOARD_PAGEUP",
+      "label": "ZOOM_IN",
+      "bridgeOnly": true
+    }
+  ],
+  "groups": [
+    {
+      "id": "group_S3",
+      "action": "",
+      "anchor": "BL",
+      "cx": 401.375,
+      "cy": 964.0625,
+      "ox": 401.375,
+      "oy": -115.9375,
+      "centre": 96,
+      "sectors": [
+        {
+          "action": "AIM_MODE",
+          "keycode": "KEYBOARD_F1",
+          "label": "AIM_MODE"
+        },
+        {
+          "action": "TARGET_LOCK",
+          "keycode": "KEYBOARD_TAB",
+          "label": "TARGET_LOCK"
+        },
+        {
+          "action": "SMART_CURSOR",
+          "keycode": "KEYBOARD_LSHIFT",
+          "label": "SMART_CURSOR"
+        }
+      ]
+    },
+    {
+      "id": "group_S6",
+      "action": "",
+      "anchor": "CL",
+      "cx": 243.875,
+      "cy": 662.1875,
+      "ox": 243.875,
+      "oy": 122.1875,
+      "centre": 96,
+      "sectors": [
+        {
+          "action": "HEAL",
+          "keycode": "KEYBOARD_H",
+          "label": "HEAL"
+        },
+        {
+          "action": "MANA",
+          "keycode": "KEYBOARD_J",
+          "label": "MANA"
+        },
+        {
+          "action": "BUFF",
+          "keycode": "KEYBOARD_B",
+          "label": "BUFF"
+        }
+      ]
+    }
+  ],
+  "hotbar": null,
+  "versionKind": "content-hash (crc32 of reference/sticks/buttons/groups)"
+}
