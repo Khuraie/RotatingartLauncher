@@ -1,6 +1,6 @@
 {
   "format": "terradock-control-pack",
-  "version": 1561161438,
+  "version": 1462773153,
   "name": "Terradock touch v2",
   "generatedBy": "tools/terradock/gen_control_pack.py",
   "source": "terradock/control-pack-ref.json",
@@ -277,9 +277,9 @@
       "ox": 600,
       "oy": 40,
       "size": 72,
-      "keycode": "KEYBOARD_F4",
+      "keycode": "KEYBOARD_ESCAPE",
       "label": "settings",
-      "bridgeOnly": true
+      "bridgeOnly": false
     },
     {
       "id": "chat",
@@ -305,7 +305,7 @@
       "size": 72,
       "keycode": "MOUSE_WHEEL_DOWN",
       "label": "hbnext",
-      "bridgeOnly": true
+      "bridgeOnly": false
     },
     {
       "id": "hbprev",
@@ -318,7 +318,7 @@
       "size": 72,
       "keycode": "MOUSE_WHEEL_UP",
       "label": "hbprev",
-      "bridgeOnly": true
+      "bridgeOnly": false
     },
     {
       "id": "page",

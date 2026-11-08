@@ -40,6 +40,11 @@ class TerradockRecordingBridge(
         /** 满偏时相对鼠标速度（px/s）= 900 * (mouseRightStickSpeed / 100) */
         private const val MOUSE_SPEED_BASE = 900f
 
+        /** 手势时间窗（毫秒）：单击判定 / 双击间隔 / 旧版上滑 */
+        private const val TAP_MAX_MS = 220L
+        private const val DOUBLE_TAP_MS = 320L
+        private const val SWIPE_MAX_MS = 300L
+
         private val MOVE_KEYS = arrayOf(
             ControlData.KeyCode.KEYBOARD_W,
             ControlData.KeyCode.KEYBOARD_D,
@@ -56,13 +61,12 @@ class TerradockRecordingBridge(
                 keycode == ControlData.KeyCode.KEYBOARD_F2 ||
                 // v2: mobile controls that only exist as bridge actions in the port
                 keycode == ControlData.KeyCode.KEYBOARD_F3 ||   // PAGE_TOGGLE
-                keycode == ControlData.KeyCode.KEYBOARD_F4 ||   // SETTINGS
                 keycode == ControlData.KeyCode.KEYBOARD_F5 ||   // LOADOUT_CYCLE
                 keycode == ControlData.KeyCode.KEYBOARD_F6 ||   // EMOTE
                 keycode == ControlData.KeyCode.KEYBOARD_EQUALS ||   // MAP_ZOOM_IN
-                keycode == ControlData.KeyCode.KEYBOARD_MINUS ||    // MAP_ZOOM_OUT
-                keycode == ControlData.KeyCode.MOUSE_WHEEL_UP ||
-                keycode == ControlData.KeyCode.MOUSE_WHEEL_DOWN
+                keycode == ControlData.KeyCode.KEYBOARD_MINUS       // MAP_ZOOM_OUT
+        // NOTE: mouse wheel is forwarded on purpose (desktop Terraria scrolls the hotbar with it),
+        // so HOTBAR_NEXT/PREV must not be swallowed. SETTINGS forwards Escape (opens the game menu).
     }
 
     private val state = TerradockInputState
@@ -78,6 +82,28 @@ class TerradockRecordingBridge(
     /** AIM_MODE 按钮（桥接 AUTO_FIRE，bit9）按住时由 launcher 保持左键 */
     private var autoFireButtonHeld = false
     private var fireSent = false
+
+    // ===================== 左摇杆手势（手机版 Up To Jump / 双击冲刺） =====================
+    /**
+     * 手机版 `GUIVirtualInputController.LeftStickJumpMode`：DoubleTap（默认）/ SingleTap /
+     * Up（旧版上滑）/ Disabled。桌面 Terraria 没有这些手势，所以由 launcher 合成：
+     *  - 上跳：按设置给 Space（单击 / 双击 / 上滑）；双击后继续按住 → 持续 Space（翅膀飞行/滑翔）
+     *  - 左右双击 → 连按两次 A/D（桌面靠双击方向键触发冲刺）
+     * 下双击（套装加成）桌面没有对应语义，不合成。
+     */
+    enum class UpToJumpMode { DoubleTap, SingleTap, Up, Disabled }
+
+    @Volatile
+    var upToJumpMode: UpToJumpMode = UpToJumpMode.DoubleTap
+
+    private var upWasDown = false
+    private var upDownAt = 0L
+    private var lastUpTapAt = 0L
+    private var jumpHeld = false
+    private var leftWasDown = false
+    private var rightWasDown = false
+    private var lastLeftTapAt = 0L
+    private var lastRightTapAt = 0L
 
     // ===================== 每帧合成 =====================
 
@@ -115,6 +141,82 @@ class TerradockRecordingBridge(
         // 桥接位：上下微调（攀爬/下跳）
         state.setAction(TerradockBridgeFormat.ACTION_UP, desired[0])
         state.setAction(TerradockBridgeFormat.ACTION_DOWN, desired[2])
+        // 手机版手势（上跳 / 双击冲刺）
+        applyMoveStickGestures(
+            System.nanoTime() / 1_000_000L,
+            desired[0], desired[3], desired[1], desired[2]
+        )
+    }
+
+    /**
+     * 左摇杆手势状态机。[nowMs] 为单调毫秒。
+     * 只在 [upToJumpMode] 允许时才合成跳跃，避免和用户的点击习惯冲突。
+     */
+    private fun applyMoveStickGestures(nowMs: Long, up: Boolean, left: Boolean, right: Boolean, down: Boolean) {
+        // ---------- 上方向：跳跃 ----------
+        if (up && !upWasDown) upDownAt = nowMs
+        if (!up && upWasDown) {
+            val heldMs = nowMs - upDownAt
+            when (upToJumpMode) {
+                UpToJumpMode.Disabled -> Unit
+                // 旧版上滑：短促推上再松开
+                UpToJumpMode.Up -> if (heldMs <= SWIPE_MAX_MS) tapJump()
+                UpToJumpMode.SingleTap -> if (heldMs <= TAP_MAX_MS) tapJump()
+                UpToJumpMode.DoubleTap -> {
+                    if (heldMs <= TAP_MAX_MS) {
+                        if (lastUpTapAt != 0L && nowMs - lastUpTapAt <= DOUBLE_TAP_MS) {
+                            // 双击后的这一下：起跳，并允许“继续按住”变成持续飞行
+                            tapJump()
+                            lastUpTapAt = -1L
+                        } else {
+                            lastUpTapAt = nowMs
+                        }
+                    }
+                }
+            }
+        }
+        // 双击后仍按住上 → 保持 Space（飞行/滑翔）。松开上或再次点按则结束。
+        val holdingFly = upToJumpMode == UpToJumpMode.DoubleTap && up && lastUpTapAt == -1L
+        if (holdingFly != jumpHeld) {
+            jumpHeld = holdingFly
+            delegate.sendKey(ControlData.KeyCode.KEYBOARD_SPACE, holdingFly)
+            state.setAction(TerradockBridgeFormat.ACTION_JUMP, holdingFly)
+        }
+        if (!up && lastUpTapAt == -1L) lastUpTapAt = 0L
+        upWasDown = up
+
+        // ---------- 左右方向：双击冲刺（桌面按双击 A/D 触发） ----------
+        if (left && !leftWasDown) {
+            if (lastLeftTapAt != 0L && nowMs - lastLeftTapAt <= DOUBLE_TAP_MS) {
+                doubleTapDirection(MOVE_KEYS[3])   // A
+                lastLeftTapAt = 0L
+            } else {
+                lastLeftTapAt = nowMs
+            }
+        }
+        if (right && !rightWasDown) {
+            if (lastRightTapAt != 0L && nowMs - lastRightTapAt <= DOUBLE_TAP_MS) {
+                doubleTapDirection(MOVE_KEYS[1])   // D
+                lastRightTapAt = 0L
+            } else {
+                lastRightTapAt = nowMs
+            }
+        }
+        leftWasDown = left
+        rightWasDown = right
+        // 下方向：桌面没有“双击下 = 套装加成”的等价操作，不合成。
+    }
+
+    /** 合成一次跳跃点击（Space 按下 + 松开）。 */
+    private fun tapJump() {
+        delegate.sendKey(ControlData.KeyCode.KEYBOARD_SPACE, true)
+        delegate.sendKey(ControlData.KeyCode.KEYBOARD_SPACE, false)
+    }
+
+    /** 合成一次方向键“第二下”（键已按住）：松开再按下，游戏即可识别双击。 */
+    private fun doubleTapDirection(key: ControlData.KeyCode) {
+        delegate.sendKey(key, false)
+        delegate.sendKey(key, true)
     }
 
     private fun applyAimStick(dt: Float) {
@@ -166,6 +268,10 @@ class TerradockRecordingBridge(
                 }
                 syncFire()
             }
+            // 手机版“换页”按钮（PAGE_TOGGLE）：切换快捷栏/背包页
+            ControlData.KeyCode.KEYBOARD_F3 -> {
+                if (isDown) state.hotbarPage = if (state.hotbarPage == 0) 1 else 0
+            }
             else -> Unit
         }
         if (keycode == ControlData.KeyCode.KEYBOARD_LSHIFT ||
@@ -203,6 +309,14 @@ class TerradockRecordingBridge(
     }
 
     override fun sendMouseWheel(scrollY: Float) {
+        // 手机版 HOTBAR_PREV/NEXT：滚轮本身前向转发（桌面 Terraria 用滚轮切快捷栏），
+        // 同时把方向位写进桥接供 mod 显示。
+        if (scrollY != 0f) {
+            val bit = if (scrollY > 0f) TerradockBridgeFormat.ACTION_HOTBAR_NEXT
+            else TerradockBridgeFormat.ACTION_HOTBAR_PREV
+            state.setAction(bit, true)
+            state.setAction(bit, false)
+        }
         delegate.sendMouseWheel(scrollY)
     }
 
@@ -245,6 +359,17 @@ class TerradockRecordingBridge(
                 delegate.sendKey(MOVE_KEYS[i], false)
             }
         }
+        if (jumpHeld) {
+            jumpHeld = false
+            delegate.sendKey(ControlData.KeyCode.KEYBOARD_SPACE, false)
+        }
+        upWasDown = false
+        leftWasDown = false
+        rightWasDown = false
+        upDownAt = 0L
+        lastUpTapAt = 0L
+        lastLeftTapAt = 0L
+        lastRightTapAt = 0L
         if (fireSent) {
             fireSent = false
             delegate.sendMouseButton(ControlData.KeyCode.MOUSE_LEFT, false)
@@ -299,7 +424,6 @@ class TerradockRecordingBridge(
         ControlData.KeyCode.KEYBOARD_F6 -> TerradockBridgeFormat.ACTION_EMOTE
         else -> 0
     }
-
     private fun keyForAction(action: Int): ControlData.KeyCode? = when (action) {
         TerradockBridgeFormat.ACTION_JUMP -> ControlData.KeyCode.KEYBOARD_SPACE
         TerradockBridgeFormat.ACTION_HEAL -> ControlData.KeyCode.KEYBOARD_H

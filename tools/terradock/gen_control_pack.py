@@ -70,11 +70,12 @@ ACTION_KEYS = {
     # ---- imported from Terraria mobile (terradock/control-system/mobile-actions.json) ----
     # bridge v2 bits 23..30. Keys marked True are swallowed launcher-side (reported on the
     # bridge only); CHAT is forwarded because Enter opens the game's chat.
-    "HOTBAR_NEXT":  ("MOUSE_WHEEL_DOWN",  True),
-    "HOTBAR_PREV":  ("MOUSE_WHEEL_UP",    True),
+    "HOTBAR_NEXT":  ("MOUSE_WHEEL_DOWN",  False),
+    "HOTBAR_PREV":  ("MOUSE_WHEEL_UP",    False),
     "PAGE_TOGGLE":  ("KEYBOARD_F3",       True),
     "CHAT":         ("KEYBOARD_RETURN",   False),
-    "SETTINGS":     ("KEYBOARD_F4",       True),
+    # mobile Settings == the game's pause/settings overlay on desktop -> forward Escape
+    "SETTINGS":     ("KEYBOARD_ESCAPE",   False),
     "MAP_ZOOM_IN":  ("KEYBOARD_EQUALS",   True),
     "MAP_ZOOM_OUT": ("KEYBOARD_MINUS",    True),
     "LOADOUT_CYCLE":("KEYBOARD_F5",       True),

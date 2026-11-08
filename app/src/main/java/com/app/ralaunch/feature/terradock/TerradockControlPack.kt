@@ -359,15 +359,19 @@ object TerradockControlPack {
         // 分组/轮盘控件：手机版 VirtualControlsGroupConfiguration_Layout（中心动作 + 最多 4 个外圈槽）
         asset.groups.forEach { spec ->
             if (spec.sectors.isEmpty()) return@forEach
-            val diameterPx = spec.centre * 3f * u          // 展开后的轮盘直径（参考画布单位）
+            val sizePx = spec.centre * u                  // 收起状态的中心按钮直径
             val (cx, cy) = mapPoint(spec.anchor, spec.cx, spec.cy, surfaceW, surfaceH, u, asset.reference)
             val radial = ControlData.RadialMenu().apply {
                 name = spec.id
-                this.x = (cx - diameterPx / 2f) / surfaceW
-                this.y = (cy - diameterPx / 2f) / surfaceH
-                this.width = diameterPx / surfaceH
-                this.height = diameterPx / surfaceH
+                this.x = (cx - sizePx / 2f) / surfaceW
+                this.y = (cy - sizePx / 2f) / surfaceH
+                this.width = sizePx / surfaceH
+                this.height = sizePx / surfaceH
                 this.sectorCount = spec.sectors.size
+                // 展开半径约为 3x 中心按钮，死区避免误触中心
+                this.expandedScale = 3f
+                this.deadZoneRatio = 0.25f
+                this.showDividers = true
                 this.sectors = spec.sectors.map { s ->
                     ControlData.RadialMenu.Sector().apply {
                         keycode = runCatching { ControlData.KeyCode.valueOf(s.keycode) }
