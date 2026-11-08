@@ -219,6 +219,9 @@ def build(ref, visible=False):
                 "label": b.get("label") or str(b.get("id", "")).upper(),
                 "bridgeOnly": bridge_only,
                 "shape": shape,
+                # 手机版的 pick 区比按钮视觉圆大约 +19 px/边（CircularPickingRegion，实测 1080p），
+                # 让 launcher 的透明触摸层与游戏的命中区一致。
+                "hitPad": 19.0,
                 "opacityOverride": overlay_opacity,
             })
 

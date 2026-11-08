@@ -151,6 +151,8 @@ object TerradockControlPack {
         val shape: String = "CIRCLE",
         /** 控件整体不透明度覆盖（>=0 生效；用于 TERRADOCK 默认包 = 全透明触摸层，视觉由 mod 绘制） */
         val opacityOverride: Float = -1f,
+        /** 触摸命中区在视觉圆形之外的额外半径（参考画布 px，两者都乘 u）。手机版 pick 区比按钮大 ~19 px/边 */
+        val hitPad: Float = 0f,
         /** 真实 Terraria 手机版按钮贴图（相对控件包 assets 目录）；为空则沿用 RAL 圆底样式 */
         val texture: TextureSpec? = null
     )
@@ -431,7 +433,7 @@ object TerradockControlPack {
                 AppLog.w(TAG, "Skip button '${spec.id}': unknown keycode '${spec.keycode}'")
                 return@forEach
             }
-            val sizePx = spec.size * u
+            val sizePx = (spec.size + 2f * spec.hitPad) * u
             val (cx, cy) = mapPoint(spec.anchor, spec.cx, spec.cy, surfaceW, surfaceH, u, asset.reference)
             val button = ControlData.Button().apply {
                 name = spec.label.ifEmpty { spec.id }

@@ -1,6 +1,6 @@
 {
   "format": "terradock-control-pack",
-  "version": 2097235690,
+  "version": 1628047606,
   "name": "Terradock touch v3 (Terraria Mobile HUD)",
   "generatedBy": "tools/terradock/gen_control_pack.py",
   "source": "terradock/control-pack-ref.json (schema v3, 1920x1080 mobile HUD frame)",
@@ -50,6 +50,7 @@
       "label": "Inventory (bag)",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -65,6 +66,7 @@
       "label": "Loadout (crossed swords)",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -80,6 +82,7 @@
       "label": "Chat",
       "bridgeOnly": false,
       "shape": "RECTANGLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -95,6 +98,7 @@
       "label": "Emotes",
       "bridgeOnly": true,
       "shape": "RECTANGLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -110,6 +114,7 @@
       "label": "Map",
       "bridgeOnly": false,
       "shape": "RECTANGLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -125,6 +130,7 @@
       "label": "Jump",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -140,6 +146,7 @@
       "label": "Grapple",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -155,6 +162,7 @@
       "label": "Interact",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -170,6 +178,7 @@
       "label": "Use / Fire",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
@@ -185,36 +194,39 @@
       "label": "Mount",
       "bridgeOnly": false,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
       "id": "zoomout",
       "action": "ZOOM_OUT",
-      "anchor": "BC",
+      "anchor": "BR",
       "cx": 1403.0,
       "cy": 1016.0,
-      "ox": 443.0,
+      "ox": -517.0,
       "oy": -64.0,
       "size": 84.0,
       "keycode": "KEYBOARD_PAGEDOWN",
       "label": "Zoom out",
       "bridgeOnly": true,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     },
     {
       "id": "zoomin",
       "action": "ZOOM_IN",
-      "anchor": "BC",
+      "anchor": "BR",
       "cx": 1730.5,
       "cy": 1015.5,
-      "ox": 770.5,
+      "ox": -189.5,
       "oy": -64.5,
       "size": 84.0,
       "keycode": "KEYBOARD_PAGEUP",
       "label": "Zoom in",
       "bridgeOnly": true,
       "shape": "CIRCLE",
+      "hitPad": 19.0,
       "opacityOverride": 0.0
     }
   ],
