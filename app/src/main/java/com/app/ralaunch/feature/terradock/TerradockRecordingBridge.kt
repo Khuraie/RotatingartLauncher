@@ -53,7 +53,16 @@ class TerradockRecordingBridge(
                 keycode == ControlData.KeyCode.KEYBOARD_PAGEDOWN ||
                 keycode == ControlData.KeyCode.KEYBOARD_TAB ||
                 keycode == ControlData.KeyCode.KEYBOARD_F1 ||
-                keycode == ControlData.KeyCode.KEYBOARD_F2
+                keycode == ControlData.KeyCode.KEYBOARD_F2 ||
+                // v2: mobile controls that only exist as bridge actions in the port
+                keycode == ControlData.KeyCode.KEYBOARD_F3 ||   // PAGE_TOGGLE
+                keycode == ControlData.KeyCode.KEYBOARD_F4 ||   // SETTINGS
+                keycode == ControlData.KeyCode.KEYBOARD_F5 ||   // LOADOUT_CYCLE
+                keycode == ControlData.KeyCode.KEYBOARD_F6 ||   // EMOTE
+                keycode == ControlData.KeyCode.KEYBOARD_EQUALS ||   // MAP_ZOOM_IN
+                keycode == ControlData.KeyCode.KEYBOARD_MINUS ||    // MAP_ZOOM_OUT
+                keycode == ControlData.KeyCode.MOUSE_WHEEL_UP ||
+                keycode == ControlData.KeyCode.MOUSE_WHEEL_DOWN
     }
 
     private val state = TerradockInputState
@@ -278,6 +287,16 @@ class TerradockRecordingBridge(
         ControlData.KeyCode.KEYBOARD_F1 -> TerradockBridgeFormat.ACTION_AUTO_FIRE
         ControlData.KeyCode.KEYBOARD_F2 -> TerradockBridgeFormat.ACTION_AUTO_SELECT
         ControlData.KeyCode.MOUSE_RIGHT -> TerradockBridgeFormat.ACTION_INTERACT
+        // ---- v2 (imported from Terraria mobile) ----
+        ControlData.KeyCode.MOUSE_WHEEL_DOWN -> TerradockBridgeFormat.ACTION_HOTBAR_NEXT
+        ControlData.KeyCode.MOUSE_WHEEL_UP -> TerradockBridgeFormat.ACTION_HOTBAR_PREV
+        ControlData.KeyCode.KEYBOARD_F3 -> TerradockBridgeFormat.ACTION_PAGE_TOGGLE
+        ControlData.KeyCode.KEYBOARD_RETURN -> TerradockBridgeFormat.ACTION_CHAT
+        ControlData.KeyCode.KEYBOARD_F4 -> TerradockBridgeFormat.ACTION_SETTINGS
+        ControlData.KeyCode.KEYBOARD_EQUALS -> TerradockBridgeFormat.ACTION_MAP_ZOOM_IN
+        ControlData.KeyCode.KEYBOARD_MINUS -> TerradockBridgeFormat.ACTION_MAP_ZOOM_OUT
+        ControlData.KeyCode.KEYBOARD_F5 -> TerradockBridgeFormat.ACTION_LOADOUT_CYCLE
+        ControlData.KeyCode.KEYBOARD_F6 -> TerradockBridgeFormat.ACTION_EMOTE
         else -> 0
     }
 

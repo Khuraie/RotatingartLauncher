@@ -18,7 +18,7 @@ object TerradockBridgeFormat {
 
     const val FILE_SIZE: Int = 512
     const val SLOT_SIZE: Int = 256
-    const val VERSION: Int = 1
+    const val VERSION: Int = 2
     const val MAGIC: String = "TRDK"
     const val TOUCH_COUNT: Int = 10
     const val TOUCH_RECORD_SIZE: Int = 16
@@ -98,6 +98,17 @@ object TerradockBridgeFormat {
     const val ACTION_USE_TILE = 1 shl 20
     const val ACTION_PROFILE_SWITCH = 1 shl 21
     const val ACTION_MENU = 1 shl 22
+
+    // ---- v2: actions imported from Terraria mobile (terradock/control-system/mobile-actions.json) ----
+    const val ACTION_HOTBAR_NEXT = 1 shl 23
+    const val ACTION_HOTBAR_PREV = 1 shl 24
+    const val ACTION_PAGE_TOGGLE = 1 shl 25
+    const val ACTION_CHAT = 1 shl 26
+    const val ACTION_SETTINGS = 1 shl 27
+    const val ACTION_MAP_ZOOM_IN = 1 shl 28
+    const val ACTION_MAP_ZOOM_OUT = 1 shl 29
+    const val ACTION_LOADOUT_CYCLE = 1 shl 30
+    /** bit 31 stays reserved */
 
     /** 瞄准模式：0 = Aim Only，1 = Aim & Use */
     const val AIM_MODE_ONLY = 0

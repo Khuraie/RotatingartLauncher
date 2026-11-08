@@ -1,6 +1,6 @@
 {
   "format": "terradock-control-pack",
-  "version": 1686185985,
+  "version": 1561161438,
   "name": "Terradock touch v2",
   "generatedBy": "tools/terradock/gen_control_pack.py",
   "source": "terradock/control-pack-ref.json",
@@ -267,6 +267,84 @@
       "keycode": "KEYBOARD_ESCAPE",
       "label": "pause",
       "bridgeOnly": false
+    },
+    {
+      "id": "settings",
+      "action": "SETTINGS",
+      "anchor": "TL",
+      "cx": 600,
+      "cy": 40,
+      "ox": 600,
+      "oy": 40,
+      "size": 72,
+      "keycode": "KEYBOARD_F4",
+      "label": "settings",
+      "bridgeOnly": true
+    },
+    {
+      "id": "chat",
+      "action": "CHAT",
+      "anchor": "TL",
+      "cx": 600,
+      "cy": 122,
+      "ox": 600,
+      "oy": 122,
+      "size": 72,
+      "keycode": "KEYBOARD_RETURN",
+      "label": "chat",
+      "bridgeOnly": false
+    },
+    {
+      "id": "hbnext",
+      "action": "HOTBAR_NEXT",
+      "anchor": "TL",
+      "cx": 600,
+      "cy": 204,
+      "ox": 600,
+      "oy": 204,
+      "size": 72,
+      "keycode": "MOUSE_WHEEL_DOWN",
+      "label": "hbnext",
+      "bridgeOnly": true
+    },
+    {
+      "id": "hbprev",
+      "action": "HOTBAR_PREV",
+      "anchor": "CL",
+      "cx": 600,
+      "cy": 286,
+      "ox": 600,
+      "oy": -254,
+      "size": 72,
+      "keycode": "MOUSE_WHEEL_UP",
+      "label": "hbprev",
+      "bridgeOnly": true
+    },
+    {
+      "id": "page",
+      "action": "PAGE_TOGGLE",
+      "anchor": "CL",
+      "cx": 56,
+      "cy": 576,
+      "ox": 56,
+      "oy": 36,
+      "size": 72,
+      "keycode": "KEYBOARD_F3",
+      "label": "page",
+      "bridgeOnly": true
+    },
+    {
+      "id": "loadout",
+      "action": "LOADOUT_CYCLE",
+      "anchor": "CL",
+      "cx": 56,
+      "cy": 662,
+      "ox": 56,
+      "oy": 122,
+      "size": 72,
+      "keycode": "KEYBOARD_F5",
+      "label": "loadout",
+      "bridgeOnly": true
     }
   ],
   "hotbar": {
@@ -292,5 +370,118 @@
       ""
     ]
   },
-  "versionKind": "content-hash (crc32 of reference/sticks/buttons/hotbar)"
+  "groups": [
+    {
+      "id": "quick",
+      "action": "FIRE",
+      "anchor": "BC",
+      "cx": 1080,
+      "cy": 940,
+      "ox": -120,
+      "oy": -140,
+      "centre": 96,
+      "sectors": [
+        {
+          "action": "HEAL",
+          "keycode": "KEYBOARD_H",
+          "label": "HEAL"
+        },
+        {
+          "action": "MANA",
+          "keycode": "KEYBOARD_J",
+          "label": "MANA"
+        },
+        {
+          "action": "BUFF",
+          "keycode": "KEYBOARD_B",
+          "label": "BUFF"
+        },
+        {
+          "action": "MOUNT",
+          "keycode": "KEYBOARD_R",
+          "label": "MOUNT"
+        }
+      ]
+    },
+    {
+      "id": "emotes",
+      "action": "EMOTE",
+      "anchor": "BC",
+      "cx": 1320,
+      "cy": 940,
+      "ox": 120,
+      "oy": -140,
+      "centre": 96,
+      "sectors": [
+        {
+          "action": "EMOTE",
+          "keycode": "KEYBOARD_F6",
+          "label": "EMOTE 1"
+        },
+        {
+          "action": "EMOTE",
+          "keycode": "KEYBOARD_F6",
+          "label": "EMOTE 2"
+        },
+        {
+          "action": "EMOTE",
+          "keycode": "KEYBOARD_F6",
+          "label": "EMOTE 3"
+        },
+        {
+          "action": "EMOTE",
+          "keycode": "KEYBOARD_F6",
+          "label": "EMOTE 4"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "TouchSmartCursorMode": "Toggle",
+    "TouchAimAndUseMode": "Aim and Use",
+    "LeftStickJump": "Double Tap",
+    "SmartCursorMode": "Toggle",
+    "PageOrientation": "Horizontal",
+    "InventoryPageMode": "2 Pages",
+    "InventoryCameraMovement": "Auto",
+    "ControllerSmartCursorMode": "Toggle"
+  },
+  "templates": [
+    {
+      "id": "default",
+      "labelKey": "TouchTemplateDefault",
+      "label": "Default Layout"
+    },
+    {
+      "id": "classic",
+      "labelKey": "TouchTemplateClassic",
+      "label": "Classic Layout"
+    },
+    {
+      "id": "xenopunk",
+      "labelKey": "TouchTemplateXenopunk",
+      "label": "Xenopunk"
+    },
+    {
+      "id": "roboarms",
+      "labelKey": "TouchTemplateRoboarms",
+      "label": "Roboarms"
+    },
+    {
+      "id": "nescre",
+      "labelKey": "TouchTemplateNescre",
+      "label": "Nescre"
+    },
+    {
+      "id": "angryhippo",
+      "labelKey": "TouchTemplateAngryhippo",
+      "label": "AngryHippo"
+    },
+    {
+      "id": "custom",
+      "labelKey": "TouchTemplateCustom",
+      "label": "Custom"
+    }
+  ],
+  "versionKind": "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings)"
 }

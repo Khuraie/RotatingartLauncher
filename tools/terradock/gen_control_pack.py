@@ -67,6 +67,18 @@ ACTION_KEYS = {
     #   F2 -> bridge bit 10 AUTO_SELECT (auto-select hotbar item; mod-side behaviour)
     "AIM_MODE":     ("KEYBOARD_F1",       True),
     "AUTO_SELECT":  ("KEYBOARD_F2",       True),
+    # ---- imported from Terraria mobile (terradock/control-system/mobile-actions.json) ----
+    # bridge v2 bits 23..30. Keys marked True are swallowed launcher-side (reported on the
+    # bridge only); CHAT is forwarded because Enter opens the game's chat.
+    "HOTBAR_NEXT":  ("MOUSE_WHEEL_DOWN",  True),
+    "HOTBAR_PREV":  ("MOUSE_WHEEL_UP",    True),
+    "PAGE_TOGGLE":  ("KEYBOARD_F3",       True),
+    "CHAT":         ("KEYBOARD_RETURN",   False),
+    "SETTINGS":     ("KEYBOARD_F4",       True),
+    "MAP_ZOOM_IN":  ("KEYBOARD_EQUALS",   True),
+    "MAP_ZOOM_OUT": ("KEYBOARD_MINUS",    True),
+    "LOADOUT_CYCLE":("KEYBOARD_F5",       True),
+    "EMOTE":        ("KEYBOARD_F6",       True),
 }
 
 # 12 hotbar cells; tap -> digit quick-select keys 1..9,0 (Lead's convention, not bridge fields)
@@ -224,7 +236,83 @@ def build(ref):
             "keys": HOTBAR_KEYS[: cols * rows],
         }
 
+    # ---- group (radial) controls: Terraria mobile VirtualControlsGroupConfiguration ----
+    out["groups"] = []
+    for g in ref.get("groups", []):
+        cx, cy = g.get("cx", 0), g.get("cy", 0)
+        anchor = anchor_for(cx, cy)
+        ox, oy = offsets_for(anchor, cx, cy)
+        out["groups"].append({
+            "id": g.get("id", ""),
+            "action": g.get("action", ""),
+            "anchor": anchor,
+            "cx": cx,
+            "cy": cy,
+            "ox": ox,
+            "oy": oy,
+            "centre": g.get("centre", 96),
+            "sectors": [
+                {
+                    "action": s.get("action", ""),
+                    "keycode": s.get("keycode", "UNKNOWN"),
+                    "label": s.get("label", ""),
+                }
+                for s in g.get("sectors", [])
+            ],
+        })
+
+    # ---- mobile settings defaults imported from the APK (see terradock/control-system) ----
+    out["settings"] = load_settings_defaults()
+    out["templates"] = load_templates()
+
     return out
+
+
+SETTINGS_JSON = r"C:\Tmobile\terradock\control-system\mobile-settings.json"
+ACTIONS_JSON = r"C:\Tmobile\terradock\control-system\mobile-actions.json"
+
+
+def load_settings_defaults():
+    """{settingId: default} for rows whose shipped default was recovered from the APK."""
+    if not os.path.isfile(SETTINGS_JSON):
+        return {}
+    try:
+        with open(SETTINGS_JSON, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+    except Exception as e:
+        print("  warn: cannot read %s: %s" % (SETTINGS_JSON, e), file=sys.stderr)
+        return {}
+    return {
+        row["id"]: row["default"]
+        for row in data.get("settings", [])
+        if row.get("default") is not None
+    }
+
+
+def load_templates():
+    """Mobile touch-control templates (Default/Classic/Xenopunk/Roboarms/Nescre/AngryHippo/Custom)."""
+    path = r"C:\Tmobile\terradock\control-system\mobile-settings.json"
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+    except Exception:
+        return []
+    return data.get("presets", {}).get("templates", [])
+
+
+# Terraria mobile ContolType (serialized layout enum) -> pack action id
+ACTION_ALIASES = {
+    "Jump": "JUMP", "Heal": "HEAL", "Mana": "MANA", "Buff": "BUFF", "Mount": "MOUNT",
+    "Interact": "INTERACT", "InteractOnly": "INTERACT", "Fire": "FIRE",
+    "GrappleFire": "GRAPPLE", "AutoSelect": "AUTO_SELECT", "ZoomIn": "ZOOM_IN",
+    "ZoomOut": "ZOOM_OUT", "SmartCursor": "SMART_CURSOR", "AutoFire": "AIM_MODE",
+    "CombatTargetting": "TARGET_LOCK", "ProfileSwitch": "PROFILE_SWITCH",
+    "InventoryToggle": "INVENTORY", "Settings": "SETTINGS", "Loadout1": "LOADOUT",
+    "Loadout2": "LOADOUT", "Loadout3": "LOADOUT", "LoadoutCycle": "LOADOUT_CYCLE",
+    "ToggleFireInteract": "FIRE",
+}
 
 
 def main():
@@ -240,12 +328,12 @@ def main():
         ref = json.load(f)
 
     pack = build(ref)
-    # 内容哈希做版本号：几何/按键一变，安装器就会自动重装（无需手工 bump）
-    payload = {k: pack[k] for k in ("reference", "sticks", "buttons", "hotbar")}
+    # 内容哈希做版本号：几何/按键/分组/设置一变，安装器就会自动重装（无需手工 bump）
+    payload = {k: pack[k] for k in ("reference", "sticks", "buttons", "hotbar", "groups", "settings")}
     pack["version"] = zlib.crc32(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ) & 0x7FFFFFFF
-    pack["versionKind"] = "content-hash (crc32 of reference/sticks/buttons/hotbar)"
+    pack["versionKind"] = "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings)"
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -253,9 +341,16 @@ def main():
         f.write("\n")
 
     print("wrote %s" % args.out)
-    print("  version=%d (content hash)  sticks=%d buttons=%d hotbarCells=%s" % (
-        pack["version"], len(pack["sticks"]), len(pack["buttons"]),
+    print("  version=%d (content hash)  sticks=%d buttons=%d groups=%d settings=%d hotbarCells=%s" % (
+        pack["version"], len(pack["sticks"]), len(pack["buttons"]), len(pack.get("groups", [])),
+        len(pack.get("settings", {})),
         len(pack["hotbar"]["keys"]) if pack["hotbar"] else 0))
+    for g in pack.get("groups", []):
+        print("  group  %-8s %-14s anchor=%-2s cx=%-4s cy=%-4s sectors=%d [%s]" % (
+            g["id"], g["action"], g["anchor"], g["cx"], g["cy"], len(g["sectors"]),
+            ", ".join(s["action"] or "?" for s in g["sectors"])))
+    if pack.get("settings"):
+        print("  settings %s" % ", ".join("%s=%s" % (k, v) for k, v in sorted(pack["settings"].items())))
     for s in pack["sticks"]:
         print("  stick %-5s anchor=%-2s cx=%-4s cy=%-4s off=(%5s,%5s) r=%s" % (
             s["id"], s["anchor"], s["cx"], s["cy"], s["ox"], s["oy"], s["radius"]))

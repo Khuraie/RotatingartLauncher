@@ -55,12 +55,43 @@ object TerradockControlPack {
     @Serializable
     data class PackAsset(
         val format: String = "terradock-control-pack",
-        val version: Int = 1,
+        val version: Int = 2,
         val name: String = "Terradock touch v2",
         val reference: Reference = Reference(),
         val sticks: List<StickSpec> = emptyList(),
         val buttons: List<ButtonSpec> = emptyList(),
-        val hotbar: HotbarSpec? = null
+        val hotbar: HotbarSpec? = null,
+        /** 分组/轮盘控件（Terraria 手机版 VirtualControlsGroupConfiguration_Layout） */
+        val groups: List<GroupSpec> = emptyList(),
+        /** 手机版设置默认值（GUISettingID → 值），见 terradock/control-system/mobile-settings.json */
+        val settings: Map<String, String> = emptyMap(),
+        /** 手机版控制模板清单（Default/Classic/Xenopunk/Roboarms/Nescre/AngryHippo/Custom） */
+        val templates: List<TemplateSpec> = emptyList()
+    )
+
+    @Serializable
+    data class TemplateSpec(val id: String = "", val label: String = "")
+
+    @Serializable
+    data class GroupSpec(
+        val id: String = "",
+        /** 中心动作（桥接动作名，如 FIRE/EMOTE） */
+        val action: String = "",
+        val anchor: String = "BC",
+        val cx: Float = 0f,
+        val cy: Float = 0f,
+        val ox: Float = 0f,
+        val oy: Float = 0f,
+        /** 中心按钮直径（参考画布 px） */
+        val centre: Float = 96f,
+        val sectors: List<SectorSpec> = emptyList()
+    )
+
+    @Serializable
+    data class SectorSpec(
+        val action: String = "",
+        val keycode: String = "UNKNOWN",
+        val label: String = ""
     )
 
     @Serializable
@@ -283,6 +314,30 @@ object TerradockControlPack {
                 }
                 controls.add(button)
             }
+        }
+
+        // 分组/轮盘控件：手机版 VirtualControlsGroupConfiguration_Layout（中心动作 + 最多 4 个外圈槽）
+        asset.groups.forEach { spec ->
+            if (spec.sectors.isEmpty()) return@forEach
+            val diameterPx = spec.centre * 3f * u          // 展开后的轮盘直径（参考画布单位）
+            val (cx, cy) = mapPoint(spec.anchor, spec.cx, spec.cy, surfaceW, surfaceH, u, asset.reference)
+            val radial = ControlData.RadialMenu().apply {
+                name = spec.id
+                this.x = (cx - diameterPx / 2f) / surfaceW
+                this.y = (cy - diameterPx / 2f) / surfaceH
+                this.width = diameterPx / surfaceH
+                this.height = diameterPx / surfaceH
+                this.sectorCount = spec.sectors.size
+                this.sectors = spec.sectors.map { s ->
+                    ControlData.RadialMenu.Sector().apply {
+                        keycode = runCatching { ControlData.KeyCode.valueOf(s.keycode) }
+                            .getOrElse { ControlData.KeyCode.UNKNOWN }
+                        label = s.label
+                    }
+                }.toMutableList()
+            }
+            controls.add(radial)
+            AppLog.i(TAG, "Added group '${spec.id}': ${spec.sectors.size} sectors (centre=${spec.action})")
         }
 
         layout.controls = controls
