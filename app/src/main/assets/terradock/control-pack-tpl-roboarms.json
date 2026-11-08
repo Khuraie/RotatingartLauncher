@@ -147,12 +147,12 @@
   ],
   "hotbar": {
     "anchor": "TL",
-    "x": 22,
-    "y": 18,
-    "cols": 6,
-    "rows": 2,
-    "cell": 78,
-    "gap": 7,
+    "x": 102.0,
+    "y": 6.0,
+    "cols": 2,
+    "rows": 5,
+    "cell": 84.0,
+    "gap": 12.0,
     "keys": [
       "KEYBOARD_1",
       "KEYBOARD_2",
@@ -163,9 +163,7 @@
       "KEYBOARD_7",
       "KEYBOARD_8",
       "KEYBOARD_9",
-      "KEYBOARD_0",
-      "",
-      ""
+      "KEYBOARD_0"
     ]
   },
   "versionKind": "content-hash (crc32 of reference/sticks/buttons/groups)"

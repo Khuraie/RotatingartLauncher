@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 """TERRADOCK control pack generator.
 
-Reads the frozen reference geometry (`C:\\Tmobile\\terradock\\control-pack-ref.json`,
-2400x1080 design canvas, owned by the mock teammate) and writes the launcher's bundled
-control pack asset:
+Reads the frozen reference geometry (`C:\\Tmobile\\terradock\\control-pack-ref.json`, schema v3,
+1920x1080 reference frame = the real Terraria Mobile 1.4.5 HUD as measured at 1080p) and writes
+the launcher's bundled control pack asset:
 
     RotatingartLauncher/app/src/main/assets/terradock/control-pack.json
 
-Coordinate convention (must match the TMLMobileFeel mod exactly, agreed with the Lead):
+Coordinate convention (must match the TMLMobileFeel mod exactly):
   u = surfaceHeightPx / 1080
   Each element is anchored to one of the nine reference anchor points
-    TL=(0,0) TC=(1200,0) TR=(2400,0) CL=(0,540) C=(1200,540) CR=(2400,540)
-    BL=(0,1080) BC=(1200,1080) BR=(2400,1080)      (all in reference units)
-  Anchor rule used here (deterministic): take the nearest anchor independently on each
-  axis (x -> 0 / 1200 / 2400, y -> 0 / 540 / 1080), ties resolved towards the centre.
+    TL=(0,0) TC=(960,0) TR=(1920,0) CL=(0,540) C=(960,540) CR=(1920,540)
+    BL=(0,1080) BC=(960,1080) BR=(1920,1080)      (all in reference units)
   Runtime position (both sides):
     px = anchorPointPx + (cx - anchorRefX, cy - anchorRefY) * u
   Sizes scale by u as well.
 
-The launcher later converts the reference geometry into RAL `ControlData` normalized
-coordinates (0..1 of the real surface) in `TerradockControlPack.kt`.
+VISUAL OWNERSHIP (2026-11-11): the TERRADOCK default pack installs INVISIBLE touch zones
+(`opacityOverride: 0`); the TMLMobileFeel mod draws the native mobile HUD/controls from the same
+reference geometry. That removes double-drawing (translucent stick discs would darken otherwise) and
+guarantees the launcher hit-areas coincide with what the mod draws. Set `--visible` to install the
+legacy visible RAL-styled controls instead (debug only).
 
 Usage:
     python tools/terradock/gen_control_pack.py
@@ -31,8 +32,11 @@ import os
 import sys
 import zlib
 
-REF_W, REF_H = 2400, 1080
-ANCHOR_X = [0, 1200, 2400]          # L, C, R
+# Default pack reference frame: the measured 1920x1080 (16:9) mobile HUD frame == 1080p units.
+REF_W, REF_H = 1920, 1080
+# Mobile template packs (decoded from the APK) keep the original 2400x1080 calibration canvas.
+TEMPLATE_REF_W, TEMPLATE_REF_H = 2400, 1080
+ANCHOR_X = [0, 1200, 2400]          # L, C, R   (template canvas)
 ANCHOR_Y = [0, 540, 1080]           # T, C, B
 X_LETTER = ["L", "C", "R"]
 Y_LETTER = ["T", "C", "B"]
@@ -41,6 +45,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 DEFAULT_REF = r"C:\Tmobile\terradock\control-pack-ref.json"
 DEFAULT_OUT = os.path.join(REPO, "app", "src", "main", "assets", "terradock", "control-pack.json")
+
+# Anchor name (reference JSON uses long names) -> RAL short code used by TerradockControlPack.mapPoint
+ANCHOR_CODES = {
+    "topleft": "TL", "topcenter": "TC", "topright": "TR",
+    "centerleft": "CL", "center": "C", "centerright": "CR",
+    "bottomleft": "BL", "bottomcenter": "BC", "bottomright": "BR",
+    "tl": "TL", "tc": "TC", "tr": "TR", "cl": "CL", "c": "C", "cr": "CR",
+    "bl": "BL", "bc": "BC", "br": "BR",
+}
+
+
+def anchor_code(anchor, cx=None, cy=None):
+    """Reference anchor -> RAL short code (falls back to nearest-anchor rule on the 1920 frame)."""
+    if isinstance(anchor, str) and anchor.strip().lower() in ANCHOR_CODES:
+        return ANCHOR_CODES[anchor.strip().lower()]
+    if cx is None or cy is None:
+        return "BL"
+    # nearest of 0 / REF_W/2 / REF_W and 0 / REF_H/2 / REF_H
+    ax = min((0.0, REF_W / 2.0, float(REF_W)), key=lambda v: abs(cx - v))
+    ay = min((0.0, REF_H / 2.0, float(REF_H)), key=lambda v: abs(cy - v))
+    xl = "L" if ax == 0.0 else ("C" if ax == REF_W / 2.0 else "R")
+    yl = "T" if ay == 0.0 else ("C" if ay == REF_H / 2.0 else "B")
+    return yl + xl
 
 # action -> desktop key synthesized by the launcher (bridge-spec.md action table)
 #   keycode   = ControlData.KeyCode name forwarded to SDL
@@ -82,35 +109,9 @@ ACTION_KEYS = {
     "EMOTE":        ("KEYBOARD_F6",       True),
 }
 
-# 12 hotbar cells; tap -> digit quick-select keys 1..9,0 (Lead's convention, not bridge fields)
+# 10 hotbar touch cells (2 cols x 5 rows, row-major) -> digit quick-select keys 1..9,0
 HOTBAR_KEYS = ["KEYBOARD_1", "KEYBOARD_2", "KEYBOARD_3", "KEYBOARD_4", "KEYBOARD_5",
-               "KEYBOARD_6", "KEYBOARD_7", "KEYBOARD_8", "KEYBOARD_9", "KEYBOARD_0", "", ""]
-
-# Lead's authoritative geometry (2400x1080 ref units) — regression check so launcher touch
-# zones and mod-drawn controls stay locked together. id -> (cx, cy, size) where size is the
-# button diameter or the stick radius.
-EXPECTED_GEOMETRY = {
-    "move":      (272, 860, 120),
-    "aim":       (2128, 860, 120),
-    "interact":  (109, 749, 137),
-    "heal":      (435, 749, 137),
-    "autoselect": (88, 869, 103),
-    "mana":      (456, 869, 103),
-    "autofire":  (120, 965, 103),
-    "buff":      (424, 965, 103),
-    "jump":      (2291, 749, 137),
-    "grapple":   (1965, 749, 75),
-    "use":       (1944, 869, 103),
-    "mount":     (2312, 869, 103),
-    "smart":     (2280, 965, 103),
-    "target":    (1976, 965, 103),
-    "zoomout":   (735, 1010, 96),
-    "zoomin":    (1665, 1010, 96),
-    "map":       (56, 232, 72),
-    "bag":       (56, 318, 72),
-    "gear":      (56, 404, 72),
-    "pause":     (56, 490, 72),
-}
+               "KEYBOARD_6", "KEYBOARD_7", "KEYBOARD_8", "KEYBOARD_9", "KEYBOARD_0"]
 
 
 def nearest(value, candidates):
@@ -124,71 +125,77 @@ def nearest(value, candidates):
 
 
 def anchor_for(cx, cy):
+    """Template (2400x1080) nearest-anchor rule."""
     ax = nearest(cx, ANCHOR_X)
     ay = nearest(cy, ANCHOR_Y)
     return Y_LETTER[ay] + X_LETTER[ax]   # e.g. "B" + "L" = "BL"
 
 
-def offsets_for(anchor, cx, cy):
+def offsets_for(anchor, cx, cy, ref_w=REF_W, ref_h=REF_H):
     """(ox, oy) in reference units relative to the anchor point (for diffing with the mod)."""
-    ax = ANCHOR_X[X_LETTER.index(anchor[-1])]
-    ay = ANCHOR_Y[Y_LETTER.index(anchor[0])]
+    ax = 0.0 if anchor.endswith("L") else (ref_w if anchor.endswith("R") else ref_w / 2.0)
+    ay = 0.0 if anchor.startswith("T") else (ref_h if anchor.startswith("B") else ref_h / 2.0)
     return cx - ax, cy - ay
 
 
-def check_geometry(pack, expected):
-    """Diff generated (cx, cy, size) against the Lead's authoritative geometry."""
+def check_generated(pack, ref):
+    """Sanity: generated control set/geometry equals the reference JSON (no silent drift)."""
     problems = []
-    actual = {}
-    for s in pack["sticks"]:
-        actual[s["id"]] = (s["cx"], s["cy"], s["radius"])
-    for b in pack["buttons"]:
-        actual[b["id"]] = (b["cx"], b["cy"], b["size"])
-    for key, exp in expected.items():
-        act = actual.get(key)
+    want = {}
+    for group in ("system", "buttons", "bottom"):
+        for b in ref.get(group, []):
+            want[b["id"]] = (float(b["cx"]), float(b["cy"]), float(b["size"]))
+    got = {b["id"]: (b["cx"], b["cy"], b["size"]) for b in pack["buttons"]}
+    for key, exp in want.items():
+        act = got.get(key)
         if act is None:
             problems.append("%s: missing in generated pack" % key)
         elif any(abs(a - e) > 0.01 for a, e in zip(act, exp)):
-            problems.append("%s: (cx,cy,size)=%s != expected %s" % (key, act, exp))
+            problems.append("%s: (cx,cy,size)=%s != ref %s" % (key, act, exp))
+    for sid, spec in ref.get("sticks", {}).items():
+        s = next((s for s in pack["sticks"] if s["id"] == sid), None)
+        if s is None:
+            problems.append("stick %s missing" % sid)
+        elif abs(s["radius"] - float(spec["radius"])) > 0.01:
+            problems.append("stick %s radius %s != ref %s" % (sid, s["radius"], spec["radius"]))
     return problems
 
 
-def build(ref):
+def build(ref, visible=False):
+    overlay_opacity = -1.0 if visible else 0.0
     out = {
         "format": "terradock-control-pack",
-        "version": 2,
-        "name": "Terradock touch v2",
+        "version": 3,
+        "name": "Terradock touch v3 (Terraria Mobile HUD)",
         "generatedBy": "tools/terradock/gen_control_pack.py",
-        "source": "terradock/control-pack-ref.json",
-        "note": ("Reference canvas 2400x1080. Runtime mapping: u = surfaceHeightPx/1080; "
-                 "pos_px = anchorPointPx + (cx-anchorRef)*u; sizes scale by u. "
-                 "Anchor rule: X nearest of {0,1200,2400}, Y nearest of {0,540,1080} "
-                 "(ties pick the lower value). Y anchoring is cosmetic: positions and "
-                 "offsets both scale by u, so only X anchoring changes anything on "
-                 "non-2.222:1 aspect ratios."),
+        "source": "terradock/control-pack-ref.json (schema v3, 1920x1080 mobile HUD frame)",
+        "note": ("Reference frame 1920x1080 (= Terraria Mobile HUD as measured at 1080p). "
+                 "Runtime mapping: u = surfaceHeightPx/1080; pos_px = anchorPointPx + "
+                 "(cx-anchorRef)*u; sizes scale by u. Visuals are owned by the TMLMobileFeel "
+                 "mod (native mobile art); this pack installs transparent touch zones that "
+                 "coincide with the mod's drawing."),
+        "overlay": "visible" if visible else "invisible (mod draws the HUD)",
         "reference": {"w": REF_W, "h": REF_H},
         "sticks": [],
         "buttons": [],
         "hotbar": None,
     }
 
-    sticks = ref.get("sticks", {})
     for stick_id in ("move", "aim"):
-        s = sticks.get(stick_id)
+        s = (ref.get("sticks") or {}).get(stick_id)
         if not s:
             continue
-        anchor = anchor_for(s.get("cx", 0), s.get("cy", 0))
-        ox, oy = offsets_for(anchor, s.get("cx", 0), s.get("cy", 0))
+        cx, cy = float(s.get("cx", 0)), float(s.get("cy", 0))
+        anchor = anchor_code(s.get("anchor"), cx, cy)
+        ox, oy = offsets_for(anchor, cx, cy)
         out["sticks"].append({
             "id": stick_id,
             "mode": stick_id,                      # "move" -> WASD, "aim" -> relative mouse
             "anchor": anchor,
-            "cx": s.get("cx", 0),
-            "cy": s.get("cy", 0),
-            "ox": ox,
-            "oy": oy,
-            "radius": s.get("radius", 150),
-            "deadzone": s.get("deadzone", 0.12),
+            "cx": cx, "cy": cy, "ox": ox, "oy": oy,
+            "radius": float(s.get("radius", 152)),
+            "deadzone": float(s.get("deadzone", 0.12)),
+            "opacityOverride": overlay_opacity,
         })
 
     def add_buttons(items):
@@ -198,69 +205,49 @@ def build(ref):
                 print("  skip (no action mapping): %s %s" % (b.get("id"), action), file=sys.stderr)
                 continue
             keycode, bridge_only = ACTION_KEYS[action]
-            cx, cy = b.get("cx", 0), b.get("cy", 0)
-            anchor = anchor_for(cx, cy)
+            cx, cy = float(b.get("cx", 0)), float(b.get("cy", 0))
+            anchor = anchor_code(b.get("anchor"), cx, cy)
             ox, oy = offsets_for(anchor, cx, cy)
+            shape = "RECTANGLE" if str(b.get("shape", "")).upper().startswith("RECT") else "CIRCLE"
             out["buttons"].append({
                 "id": b.get("id", ""),
                 "action": action,
                 "anchor": anchor,
-                "cx": cx,
-                "cy": cy,
-                "ox": ox,
-                "oy": oy,
-                "size": b.get("size", 100),
+                "cx": cx, "cy": cy, "ox": ox, "oy": oy,
+                "size": float(b.get("size", 100)),
                 "keycode": keycode,
-                "label": b.get("label", b.get("id", "")),
+                "label": b.get("label") or str(b.get("id", "")).upper(),
                 "bridgeOnly": bridge_only,
+                "shape": shape,
+                "opacityOverride": overlay_opacity,
             })
 
-    add_buttons(ref.get("buttons", []))
     add_buttons(ref.get("system", []))
+    add_buttons(ref.get("buttons", []))
+    add_buttons(ref.get("bottom", []))
 
     hb = ref.get("hotbar")
     if hb:
-        cols = hb.get("cols", 6)
-        rows = hb.get("rows", 2)
-        cell = hb.get("cell", 150)
-        gap = hb.get("gap", 8)
-        x0 = hb.get("x", 12)
-        y0 = hb.get("y", 12)
-        # anchor the whole block by its centre
+        cols = int(hb.get("cols", 2))
+        rows = int(hb.get("rows", 5))
+        cell = float(hb.get("cell", 84))
+        gap = float(hb.get("gap", 12))
+        x0 = float(hb.get("x", 102))
+        y0 = float(hb.get("y", 6))
         block_cx = x0 + (cols * cell + (cols - 1) * gap) / 2.0
         block_cy = y0 + (rows * cell + (rows - 1) * gap) / 2.0
+        # Hotbar tapping is independent of the visual hotbar: transparent hit zones synthesizing
+        # digit keys 1..0 (the mobile hotbar itself is drawn by the mod).
         out["hotbar"] = {
-            "anchor": anchor_for(block_cx, block_cy),
+            "anchor": anchor_code(hb.get("anchor"), block_cx, block_cy),
             "x": x0, "y": y0,
             "cols": cols, "rows": rows,
             "cell": cell, "gap": gap,
             "keys": HOTBAR_KEYS[: cols * rows],
         }
 
-    # ---- group (radial) controls: Terraria mobile VirtualControlsGroupConfiguration ----
+    # ---- group (radial) controls: real mobile HUD has none by default ----
     out["groups"] = []
-    for g in ref.get("groups", []):
-        cx, cy = g.get("cx", 0), g.get("cy", 0)
-        anchor = anchor_for(cx, cy)
-        ox, oy = offsets_for(anchor, cx, cy)
-        out["groups"].append({
-            "id": g.get("id", ""),
-            "action": g.get("action", ""),
-            "anchor": anchor,
-            "cx": cx,
-            "cy": cy,
-            "ox": ox,
-            "oy": oy,
-            "centre": g.get("centre", 96),
-            "sectors": [
-                {
-                    "action": s.get("action", ""),
-                    "keycode": s.get("keycode", "UNKNOWN"),
-                    "label": s.get("label", ""),
-                }
-                for s in g.get("sectors", [])
-            ],
-        })
 
     # ---- mobile settings defaults imported from the APK (see terradock/control-system) ----
     out["settings"] = load_settings_defaults()
@@ -407,7 +394,7 @@ def build_template_pack(style, profile, default_hotbar=None):
         "name": "Terradock " + (style.get("name") or style.get("id", "")),
         "generatedBy": "tools/terradock/gen_control_pack.py --templates",
         "source": "terradock/control-system (mobile UILayout VirtualControlsStyles_Layout)",
-        "reference": {"w": REF_W, "h": REF_H},
+        "reference": {"w": TEMPLATE_REF_W, "h": TEMPLATE_REF_H},
         "templateId": style.get("id", ""),
         "hardwareStyle": style.get("id", ""),
         "profile": profile.get("id", "") if profile else "",
@@ -430,7 +417,7 @@ def build_template_pack(style, profile, default_hotbar=None):
             if action_mobile in ("Move", "Aim"):
                 role = "move" if action_mobile == "Move" else "aim"
                 anchor = anchor_for(cx, cy)
-                ox, oy = offsets_for(anchor, cx, cy)
+                ox, oy = offsets_for(anchor, cx, cy, TEMPLATE_REF_W, TEMPLATE_REF_H)
                 out["sticks"].append({
                     "id": role, "mode": role, "anchor": anchor, "cx": cx, "cy": cy,
                     "ox": ox, "oy": oy, "radius": 120, "deadzone": 0.12,
@@ -442,7 +429,7 @@ def build_template_pack(style, profile, default_hotbar=None):
                 continue
             key, bridge_only = ACTION_KEYS.get(action, ("UNKNOWN", True))
             anchor = anchor_for(cx, cy)
-            ox, oy = offsets_for(anchor, cx, cy)
+            ox, oy = offsets_for(anchor, cx, cy, TEMPLATE_REF_W, TEMPLATE_REF_H)
             out["buttons"].append({
                 "id": "axis_" + slot.get("slotId", ""), "action": action, "anchor": anchor,
                 "cx": cx, "cy": cy, "ox": ox, "oy": oy, "size": SIZE_BY_ACTION.get(action_mobile, 75),
@@ -464,7 +451,7 @@ def build_template_pack(style, profile, default_hotbar=None):
             if not secs:
                 continue
             anchor = anchor_for(cx, cy)
-            ox, oy = offsets_for(anchor, cx, cy)
+            ox, oy = offsets_for(anchor, cx, cy, TEMPLATE_REF_W, TEMPLATE_REF_H)
             out["groups"].append({
                 "id": "group_" + slot.get("slotId", ""), "action": "", "anchor": anchor,
                 "cx": cx, "cy": cy, "ox": ox, "oy": oy, "centre": 96, "sectors": secs,
@@ -479,7 +466,7 @@ def build_template_pack(style, profile, default_hotbar=None):
         if key == "UNKNOWN":
             continue
         anchor = anchor_for(cx, cy)
-        ox, oy = offsets_for(anchor, cx, cy)
+        ox, oy = offsets_for(anchor, cx, cy, TEMPLATE_REF_W, TEMPLATE_REF_H)
         out["buttons"].append({
             "id": slot.get("slotId", "").lower(), "action": action, "anchor": anchor,
             "cx": cx, "cy": cy, "ox": ox, "oy": oy,
@@ -561,6 +548,9 @@ def main():
     ap = argparse.ArgumentParser(description="Generate the TERRADOCK launcher control pack asset")
     ap.add_argument("--ref", default=DEFAULT_REF, help="control-pack-ref.json path")
     ap.add_argument("--out", default=DEFAULT_OUT, help="output control-pack.json path")
+    ap.add_argument("--visible", action="store_true",
+                    help="install the legacy VISIBLE RAL-styled controls (debug); default = transparent "
+                         "touch layer because the mod draws the native mobile HUD")
     args = ap.parse_args()
 
     if not os.path.isfile(args.ref):
@@ -569,13 +559,13 @@ def main():
     with open(args.ref, "r", encoding="utf-8-sig") as f:
         ref = json.load(f)
 
-    pack = build(ref)
-    # 内容哈希做版本号：几何/按键/分组/设置一变，安装器就会自动重装（无需手工 bump）
-    payload = {k: pack[k] for k in ("reference", "sticks", "buttons", "hotbar", "groups", "settings")}
+    pack = build(ref, visible=args.visible)
+    # 内容哈希做版本号：几何/按键/分组/设置/不透明度一变，安装器就会自动重装（无需手工 bump）
+    payload = {k: pack.get(k) for k in ("reference", "sticks", "buttons", "hotbar", "groups", "settings", "overlay")}
     pack["version"] = zlib.crc32(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ) & 0x7FFFFFFF
-    pack["versionKind"] = "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings)"
+    pack["versionKind"] = "content-hash (crc32 of reference/sticks/buttons/hotbar/groups/settings/overlay)"
 
     print("\nMobile template packs (imported control customisation):")
     write_template_packs(pack)
@@ -586,8 +576,8 @@ def main():
         f.write("\n")
 
     print("wrote %s" % args.out)
-    print("  version=%d (content hash)  sticks=%d buttons=%d groups=%d settings=%d hotbarCells=%s" % (
-        pack["version"], len(pack["sticks"]), len(pack["buttons"]), len(pack.get("groups", [])),
+    print("  overlay=%s version=%d (content hash)  sticks=%d buttons=%d groups=%d settings=%d hotbarCells=%s" % (
+        pack.get("overlay"), pack["version"], len(pack["sticks"]), len(pack["buttons"]), len(pack.get("groups", [])),
         len(pack.get("settings", {})),
         len(pack["hotbar"]["keys"]) if pack["hotbar"] else 0))
     for g in pack.get("groups", []):
@@ -609,13 +599,14 @@ def main():
             hb["anchor"], hb["x"], hb["y"], hb["cols"], hb["rows"], hb["cell"], hb["gap"],
             len([k for k in hb["keys"] if k])))
 
-    problems = check_geometry(pack, EXPECTED_GEOMETRY)
+    problems = check_generated(pack, ref)
     if problems:
-        print("\nGEOMETRY MISMATCH vs Lead's table:", file=sys.stderr)
+        print("\nGEOMETRY MISMATCH vs control-pack-ref.json:", file=sys.stderr)
         for p in problems:
             print("  " + p, file=sys.stderr)
         return 1
-    print("geometry matches Lead's table (%d elements)" % len(EXPECTED_GEOMETRY))
+    print("geometry matches control-pack-ref.json (%d buttons, %d sticks)" % (
+        len(pack["buttons"]), len(pack["sticks"])))
     return 0
 
 

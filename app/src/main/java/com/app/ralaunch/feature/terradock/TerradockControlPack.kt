@@ -7,6 +7,9 @@ import com.app.ralaunch.feature.controls.ControlData
 import com.app.ralaunch.feature.controls.packs.ControlLayout
 import com.app.ralaunch.feature.controls.packs.ControlPackInfo
 import com.app.ralaunch.feature.controls.packs.ControlPackManager
+import com.app.ralaunch.feature.controls.textures.ButtonTextureConfig
+import com.app.ralaunch.feature.controls.textures.JoystickTextureConfig
+import com.app.ralaunch.feature.controls.textures.TextureConfig
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -79,7 +82,9 @@ object TerradockControlPack {
         /** 手机版设置默认值（GUISettingID → 值），见 terradock/control-system/mobile-settings.json */
         val settings: Map<String, String> = emptyMap(),
         /** 手机版控制模板清单（Default/Classic/Xenopunk/Roboarms/Nescre/AngryHippo/Custom） */
-        val templates: List<TemplateSpec> = emptyList()
+        val templates: List<TemplateSpec> = emptyList(),
+        /** 需要从 APK 内置资源复制到已安装控件包 assets/ 的贴图（相对路径，如 "images/jump.png"） */
+        val images: List<String> = emptyList()
     )
 
     @Serializable
@@ -121,7 +126,11 @@ object TerradockControlPack {
         val cy: Float = 0f,
         /** 参考画布中的摇杆半径（px） */
         val radius: Float = 150f,
-        val deadzone: Float = 0.12f
+        val deadzone: Float = 0.12f,
+        /** 不透明度覆盖（>=0 生效；0 = 全透明触摸层，视觉由 mod 绘制） */
+        val opacityOverride: Float = -1f,
+        /** 真实手机版摇杆贴图（背景圆盘 + 摇杆头）；为空则沿用 RAL 圆底样式 */
+        val texture: StickTextureSpec? = null
     )
 
     @Serializable
@@ -137,7 +146,31 @@ object TerradockControlPack {
         val keycode: String = "UNKNOWN",
         val label: String = "",
         /** true = 只上报桥接动作位、不转发桌面输入（缩放/锁定等 launcher 侧动作） */
-        val bridgeOnly: Boolean = false
+        val bridgeOnly: Boolean = false,
+        /** 默认形状：CIRCLE / RECTANGLE */
+        val shape: String = "CIRCLE",
+        /** 控件整体不透明度覆盖（>=0 生效；用于 TERRADOCK 默认包 = 全透明触摸层，视觉由 mod 绘制） */
+        val opacityOverride: Float = -1f,
+        /** 真实 Terraria 手机版按钮贴图（相对控件包 assets 目录）；为空则沿用 RAL 圆底样式 */
+        val texture: TextureSpec? = null
+    )
+
+    /** 按钮多状态贴图路径（相对于控件包 assets 目录，如 "images/jump.png"）。 */
+    @Serializable
+    data class TextureSpec(
+        val normal: String = "",
+        val pressed: String = "",
+        val toggled: String = "",
+        val disabled: String = ""
+    )
+
+    /** 摇杆背景/摇杆头贴图路径（相对控件包 assets 目录）。 */
+    @Serializable
+    data class StickTextureSpec(
+        val background: String = "",
+        val knob: String = "",
+        val backgroundPressed: String = "",
+        val knobPressed: String = ""
     )
 
     @Serializable
@@ -157,7 +190,6 @@ object TerradockControlPack {
 
     @Serializable
     data class Slot(val i: Int = 0, val icon: String = "", val count: Int = 0, val selected: Boolean = false)
-
     // ===================== 资源加载 =====================
 
     fun loadAsset(context: Context, path: String = ASSET_PATH): PackAsset? = try {
@@ -222,6 +254,8 @@ object TerradockControlPack {
         return try {
             val layout = buildLayout(context, asset, packId = packId)
             manager.savePackLayout(packId, layout)
+            // 真实手机版贴图：把内置 assets/terradock/images/** 里的 PNG 复制到已安装控件包的 assets/
+            copyPackImages(context, manager, packId, asset.images)
             // 覆盖 manifest 的版本/名称信息（savePackLayout 只写 name/updatedAt）
             val manifest = File(File(manager.packsDir, packId), ControlPackInfo.MANIFEST_FILE_NAME)
             val info = ControlPackInfo(
@@ -247,6 +281,80 @@ object TerradockControlPack {
             false
         }
     }
+
+    /**
+     * 把内置 `assets/terradock/images/**` 的 PNG 复制到已安装控件包目录的 `assets/` 下，
+     * 保持 [images] 里的相对路径。控件包的 `TextureLoader` 会按这些相对路径加载贴图。
+     */
+    private fun copyPackImages(context: Context, manager: ControlPackManager, packId: String, images: List<String>) {
+        if (images.isEmpty()) return
+        val packDir = File(manager.packsDir, packId)
+        val assetsRoot = File(packDir, ControlPackInfo.ASSETS_DIR_NAME)
+        if (!assetsRoot.exists() && !assetsRoot.mkdirs()) {
+            AppLog.e(TAG, "Failed to create pack assets dir ${assetsRoot.absolutePath}")
+            return
+        }
+        var copied = 0
+        images.forEach { rel ->
+            if (rel.isBlank()) return@forEach
+            val dest = File(assetsRoot, rel)
+            val parent = dest.parentFile
+            if (parent != null && !parent.exists()) parent.mkdirs()
+            try {
+                context.assets.open("$ASSET_DIR/$rel").use { input ->
+                    dest.outputStream().use { output -> input.copyTo(output, 64 * 1024) }
+                }
+                copied++
+            } catch (t: Throwable) {
+                AppLog.e(TAG, "Failed to copy pack image '$rel': ${t.message}")
+            }
+        }
+        AppLog.i(TAG, "Copied $copied/${images.size} native control textures -> ${assetsRoot.absolutePath}")
+    }
+
+    /** true=使用贴图的按钮：隐藏 RAL 的圆底/描边/文字，只画贴图。 */
+    private fun ControlData.Button.applyNativeTexture(spec: ButtonSpec) {
+        val tex = spec.texture ?: return
+        this.shape = when (spec.shape.uppercase()) {
+            "RECTANGLE" -> ControlData.Button.Shape.RECTANGLE
+            "POLYGON" -> ControlData.Button.Shape.POLYGON
+            else -> ControlData.Button.Shape.CIRCLE
+        }
+        this.texture = ButtonTextureConfig(
+            normal = tex.normal.textureState(),
+            pressed = tex.pressed.textureState(),
+            toggled = tex.toggled.textureState(),
+            disabled = tex.disabled.textureState()
+        )
+        // 贴图已经包含整个按钮外观：不再画 RAL 的圆底/描边/文字
+        this.opacity = 1f
+        this.borderOpacity = 0f
+        this.textOpacity = 0f
+        this.bgColor = 0
+        this.strokeColor = 0
+        this.strokeWidth = 0f
+    }
+
+    private fun ControlData.Joystick.applyNativeTexture(spec: StickSpec) {
+        val tex = spec.texture ?: return
+        this.texture = JoystickTextureConfig(
+            background = tex.background.textureState(),
+            knob = tex.knob.textureState(),
+            backgroundPressed = tex.backgroundPressed.textureState(),
+            knobPressed = tex.knobPressed.textureState()
+        )
+    }
+
+    private fun String.textureState(): TextureConfig =
+        if (isBlank()) TextureConfig() else TextureConfig(
+            path = this,
+            enabled = true,
+            scaleMode = TextureConfig.ScaleMode.FIT,
+            opacity = 1f,
+            tintColor = 0,
+            padding = 0f,
+            clipToShape = true
+        )
 
     /**
      * 安装从手机版导入的控件模板（assets/terradock/control-pack-tpl-*.json）。
@@ -304,6 +412,12 @@ object TerradockControlPack {
                 this.stickKnobSize = 0.4f
                 this.stickOpacity = 0.7f
             }
+            joystick.applyNativeTexture(spec)
+            if (spec.opacityOverride >= 0f) {
+                // 隐藏触摸层：TERRADOCK 默认包由 mod 负责视觉，launcher 只保留命中区域
+                joystick.opacity = spec.opacityOverride
+                joystick.stickOpacity = spec.opacityOverride
+            }
             controls.add(joystick)
         }
 
@@ -330,6 +444,16 @@ object TerradockControlPack {
                 this.textOpacity = 0.9f
                 this.terradockAction = spec.action
                 this.terradockBridgeOnly = spec.bridgeOnly
+            }
+            button.applyNativeTexture(spec)
+            if (spec.opacityOverride >= 0f) {
+                // 隐藏触摸层：TERRADOCK 默认包由 mod 负责视觉，launcher 只保留命中区域
+                button.opacity = spec.opacityOverride
+                button.borderOpacity = spec.opacityOverride
+                button.textOpacity = 0f
+                button.bgColor = 0
+                button.strokeColor = 0
+                button.strokeWidth = 0f
             }
             controls.add(button)
         }
