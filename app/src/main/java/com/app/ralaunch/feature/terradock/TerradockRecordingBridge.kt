@@ -97,6 +97,22 @@ class TerradockRecordingBridge(
     @Volatile
     var upToJumpMode: UpToJumpMode = UpToJumpMode.DoubleTap
 
+    /** 上一次从控件包读到的 LeftStickJump 字符串（只在变化时重算枚举，避免每帧字符串比较） */
+    private var lastJumpModeSetting: String? = null
+
+    /** 把控件包里的手机版设置同步到手势模式。 */
+    private fun syncPackSettings() {
+        val raw = TerradockControlPack.upToJumpModeSetting
+        if (raw == lastJumpModeSetting) return
+        lastJumpModeSetting = raw
+        upToJumpMode = when (raw) {
+            "Single Tap" -> UpToJumpMode.SingleTap
+            "Swipe" -> UpToJumpMode.Up
+            "Disabled" -> UpToJumpMode.Disabled
+            else -> UpToJumpMode.DoubleTap
+        }
+    }
+
     private var upWasDown = false
     private var upDownAt = 0L
     private var lastUpTapAt = 0L
@@ -112,6 +128,7 @@ class TerradockRecordingBridge(
 
     /** 由 [TerradockBridgeService] 在每个 Choreographer 帧调用，[dt] 秒。 */
     fun tick(dt: Float) {
+        syncPackSettings()
         applyMoveStick()
         applyAimStick(dt)
         // flags.bit5：launcher 正在合成“保持开火”（瞄摇杆越界 或 AIM_MODE 按住）

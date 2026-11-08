@@ -50,6 +50,13 @@ object TerradockControlPack {
     const val REF_W = 2400f
     const val REF_H = 1080f
 
+    /**
+     * 手机版设置 `LeftStickJump` 的当前值（Double Tap / Single Tap / Swipe / Disabled），
+     * 来自控件包的 `settings` 段；[TerradockRecordingBridge] 用它决定左摇杆跳跃手势。
+     */
+    @Volatile
+    var upToJumpModeSetting: String = ""
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -186,6 +193,8 @@ object TerradockControlPack {
         }
 
         val asset = loadAsset(context) ?: return false
+        // 每次启动都同步一次（安装逻辑只在版本变化时跑）
+        upToJumpModeSetting = asset.settings["LeftStickJump"].orEmpty()
         val installed = manager.getPackInfo(PACK_ID)
         if (installed == null || installed.versionCode != asset.version) {
             val ok = install(context, manager, asset)
@@ -227,6 +236,10 @@ object TerradockControlPack {
                     "TERRADOCK mobile touch-control template '${asset.name}' (imported from Terraria mobile)"
             )
             info.saveTo(manifest)
+            if (packId == PACK_ID) {
+                // 手机版导入设置：驱动左摇杆跳跃手势（见 TerradockRecordingBridge）
+                upToJumpModeSetting = asset.settings["LeftStickJump"].orEmpty()
+            }
             AppLog.i(TAG, "Installed Terradock control pack '$packId' v${asset.version} -> ${manifest.absolutePath}")
             true
         } catch (t: Throwable) {
