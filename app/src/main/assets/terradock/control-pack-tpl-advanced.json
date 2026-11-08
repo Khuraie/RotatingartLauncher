@@ -181,12 +181,12 @@
   ],
   "hotbar": {
     "anchor": "TL",
-    "x": 102.0,
-    "y": 6.0,
+    "x": 101.25,
+    "y": 5.5,
     "cols": 2,
     "rows": 5,
-    "cell": 84.0,
-    "gap": 12.0,
+    "cell": 84.5,
+    "gap": 11.75,
     "keys": [
       "KEYBOARD_1",
       "KEYBOARD_2",
