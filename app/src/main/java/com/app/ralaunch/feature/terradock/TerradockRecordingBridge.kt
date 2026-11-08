@@ -40,10 +40,11 @@ class TerradockRecordingBridge(
         /** 满偏时相对鼠标速度（px/s）= 900 * (mouseRightStickSpeed / 100) */
         private const val MOUSE_SPEED_BASE = 900f
 
-        /** 手势时间窗（毫秒）：单击判定 / 双击间隔 / 旧版上滑 */
+        /** 手势时间窗（毫秒）：单击判定 / 双击间隔 / 旧版上滑 / 双击后的飞行保持窗 */
         private const val TAP_MAX_MS = 220L
         private const val DOUBLE_TAP_MS = 320L
         private const val SWIPE_MAX_MS = 300L
+        private const val FLY_HOLD_WINDOW_MS = 600L
 
         private val MOVE_KEYS = arrayOf(
             ControlData.KeyCode.KEYBOARD_W,
@@ -99,6 +100,8 @@ class TerradockRecordingBridge(
     private var upWasDown = false
     private var upDownAt = 0L
     private var lastUpTapAt = 0L
+    /** 双击上跳成功后的一小段窗口：在此期间重新按住上 = 持续 Space（飞行/滑翔） */
+    private var flyArmedUntil = 0L
     private var jumpHeld = false
     private var leftWasDown = false
     private var rightWasDown = false
@@ -165,9 +168,10 @@ class TerradockRecordingBridge(
                 UpToJumpMode.DoubleTap -> {
                     if (heldMs <= TAP_MAX_MS) {
                         if (lastUpTapAt != 0L && nowMs - lastUpTapAt <= DOUBLE_TAP_MS) {
-                            // 双击后的这一下：起跳，并允许“继续按住”变成持续飞行
+                            // 双击成立：起跳，并打开"继续按住 = 飞行"的窗口
                             tapJump()
-                            lastUpTapAt = -1L
+                            flyArmedUntil = nowMs + FLY_HOLD_WINDOW_MS
+                            lastUpTapAt = 0L
                         } else {
                             lastUpTapAt = nowMs
                         }
@@ -175,14 +179,15 @@ class TerradockRecordingBridge(
                 }
             }
         }
-        // 双击后仍按住上 → 保持 Space（飞行/滑翔）。松开上或再次点按则结束。
-        val holdingFly = upToJumpMode == UpToJumpMode.DoubleTap && up && lastUpTapAt == -1L
+        // 双击后重新按住上（窗口内）→ 保持 Space（飞行/滑翔）
+        val holdingFly = upToJumpMode == UpToJumpMode.DoubleTap &&
+            up && flyArmedUntil != 0L && nowMs <= flyArmedUntil
         if (holdingFly != jumpHeld) {
             jumpHeld = holdingFly
             delegate.sendKey(ControlData.KeyCode.KEYBOARD_SPACE, holdingFly)
             state.setAction(TerradockBridgeFormat.ACTION_JUMP, holdingFly)
         }
-        if (!up && lastUpTapAt == -1L) lastUpTapAt = 0L
+        if (flyArmedUntil != 0L && nowMs > flyArmedUntil) flyArmedUntil = 0L
         upWasDown = up
 
         // ---------- 左右方向：双击冲刺（桌面按双击 A/D 触发） ----------
@@ -368,6 +373,7 @@ class TerradockRecordingBridge(
         rightWasDown = false
         upDownAt = 0L
         lastUpTapAt = 0L
+        flyArmedUntil = 0L
         lastLeftTapAt = 0L
         lastRightTapAt = 0L
         if (fireSent) {
