@@ -391,7 +391,7 @@ def ref_point(anchor_control, loc):
     return base[0] + loc[0] * LOCATION_SCALE, base[1] + loc[1] * LOCATION_SCALE
 
 
-def build_template_pack(style, profile):
+def build_template_pack(style, profile, default_hotbar=None):
     """One pack per mobile hardware style, with profile bindings applied."""
     bind = {}
     group_bind = {}
@@ -487,6 +487,25 @@ def build_template_pack(style, profile):
             "keycode": key, "label": action, "bridgeOnly": bridge_only,
         })
 
+    # Hotbar touch zones are independent of the mobile hardware style (the mobile client draws the
+    # hotbar as normal UI, not as a virtual control). Without inheriting them a template pack would
+    # silently lose hotbar tapping in the port, so every template gets the same zones as the default.
+    if default_hotbar:
+        out["hotbar"] = default_hotbar
+
+    # Port fallback: a hardware style without an Aim axis (e.g. Simple, Angryhippo) would leave the
+    # player unable to move the cursor. Mobile covers that with tap-to-aim; desktop cannot, so add
+    # the standard aim stick and say so in the pack.
+    have_aim = any(s.get("mode") == "aim" for s in out["sticks"])
+    have_move = any(s.get("mode") == "move" for s in out["sticks"])
+    if not have_move:
+        out["sticks"].append({"id": "move", "mode": "move", "anchor": "BL", "cx": 272, "cy": 860,
+                              "ox": 272, "oy": -220, "radius": 120, "deadzone": 0.12})
+    if not have_aim:
+        out["sticks"].append({"id": "aim", "mode": "aim", "anchor": "BR", "cx": 2128, "cy": 860,
+                              "ox": -272, "oy": -220, "radius": 120, "deadzone": 0.12})
+        out["note"] = ("This mobile hardware style ships without an Aim axis; TERRADOCK adds the "
+                       "standard aim stick so the cursor can be moved on desktop.")
     return out
 
 
@@ -502,7 +521,7 @@ def write_template_packs(pack):
         sid = style.get("id", "")
         if not sid:
             continue
-        tpl = build_template_pack(style, by_hw.get(sid))
+        tpl = build_template_pack(style, by_hw.get(sid), pack.get("hotbar"))
         payload = {k: tpl[k] for k in ("reference", "sticks", "buttons", "groups")}
         tpl["version"] = zlib.crc32(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")

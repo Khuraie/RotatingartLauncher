@@ -1,6 +1,6 @@
 {
   "format": "terradock-control-pack",
-  "version": 1458761757,
+  "version": 1947504406,
   "name": "Terradock Simple",
   "generatedBy": "tools/terradock/gen_control_pack.py --templates",
   "source": "terradock/control-system (mobile UILayout VirtualControlsStyles_Layout)",
@@ -20,6 +20,17 @@
       "cy": 860.0,
       "ox": 272.0,
       "oy": -220.0,
+      "radius": 120,
+      "deadzone": 0.12
+    },
+    {
+      "id": "aim",
+      "mode": "aim",
+      "anchor": "BR",
+      "cx": 2128,
+      "cy": 860,
+      "ox": -272,
+      "oy": -220,
       "radius": 120,
       "deadzone": 0.12
     }
@@ -118,6 +129,29 @@
     }
   ],
   "groups": [],
-  "hotbar": null,
+  "hotbar": {
+    "anchor": "TL",
+    "x": 22,
+    "y": 18,
+    "cols": 6,
+    "rows": 2,
+    "cell": 78,
+    "gap": 7,
+    "keys": [
+      "KEYBOARD_1",
+      "KEYBOARD_2",
+      "KEYBOARD_3",
+      "KEYBOARD_4",
+      "KEYBOARD_5",
+      "KEYBOARD_6",
+      "KEYBOARD_7",
+      "KEYBOARD_8",
+      "KEYBOARD_9",
+      "KEYBOARD_0",
+      "",
+      ""
+    ]
+  },
+  "note": "This mobile hardware style ships without an Aim axis; TERRADOCK adds the standard aim stick so the cursor can be moved on desktop.",
   "versionKind": "content-hash (crc32 of reference/sticks/buttons/groups)"
 }
